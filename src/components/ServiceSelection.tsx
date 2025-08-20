@@ -23,29 +23,21 @@ const services: Service[] = [
     name: 'Cabelo',
     description: 'Corte de cabelo personalizado',
     price: 'R$ 25',
-    duration: '30 min'
+    duration: '30 min à 1h'
   },
   {
     id: 'hair-beard',
     name: 'Cabelo + Barba',
     description: 'Corte de cabelo + barba',
-    price: 'R$ 35',
-    duration: '45 min'
+    price: 'R$ 40',
+    duration: '30 min à 1h'
   },
   {
     id: 'beard',
     name: 'Barba',
     description: 'Corte e aparamento de barba',
     price: 'R$ 15',
-    duration: '20 min'
-  },
-  {
-    id: 'eyebrow',
-    name: 'Sobrancelha',
-    description: 'Aparamento de sobrancelha',
-    price: 'R$ 10',
-    duration: '15 min',
-    premium: true
+    duration: '30 min'
   }
 ];
 

@@ -1,10 +1,10 @@
 import { useState } from 'react';
+import Header from '@/components/Header';
 import ServiceSelection from '@/components/ServiceSelection';
 import TimeSlotSelection from '@/components/TimeSlotSelection';
 import AdminPanel from '@/components/AdminPanel';
 import { Scissors } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+
 
 type Step = 'welcome' | 'service' | 'booking' | 'admin';
 
@@ -15,8 +15,6 @@ const Index = () => {
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [showUserLogin, setShowUserLogin] = useState(false);
-  const [userName, setUserName] = useState('');
 
   const handleUserLogin = (name: string) => {
     setCurrentUser(name);
@@ -56,20 +54,14 @@ const Index = () => {
   };
 
   const handleBookingConfirm = () => {
+    // Here you would save the appointment to the database
+    // For now, we'll just reset to service selection
     setTimeout(() => {
       setCurrentStep('service');
       setSelectedService(null);
       setSelectedDate(null);
       setSelectedTime(null);
     }, 2000);
-  };
-
-  const handleUserLoginSubmit = () => {
-    if (userName.trim()) {
-      handleUserLogin(userName.trim());
-      setUserName('');
-      setShowUserLogin(false);
-    }
   };
 
   const renderContent = () => {
@@ -80,11 +72,11 @@ const Index = () => {
     switch (currentStep) {
       case 'welcome':
         return (
-          <div className="min-h-[80vh] flex items-center justify-center mt-12">
+          <div className="min-h-[80vh] flex items-center justify-center">
             <div className="text-center max-w-2xl mx-auto px-4">
               <div className="mb-8">
+                {/* Logo da barbearia */}
                 <Scissors className="h-20 w-20 text-barber-primary mx-auto mb-6" />
-                
                 <h1 className="text-5xl font-bold text-barber-primary mb-4">
                   BARBEARIA MANDIRA
                 </h1>
@@ -92,7 +84,7 @@ const Index = () => {
                   Agende seu horário de forma rápida e prática
                 </p>
               </div>
-
+              
               <div className="space-y-4 text-left bg-card p-8 rounded-lg border">
                 <h2 className="text-2xl font-semibold mb-6 text-center">Como Funciona</h2>
                 <div className="space-y-4">
@@ -107,7 +99,7 @@ const Index = () => {
                       </p>
                     </div>
                   </div>
-
+                  
                   <div className="flex items-start space-x-3">
                     <div className="bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
                       2
@@ -119,7 +111,7 @@ const Index = () => {
                       </p>
                     </div>
                   </div>
-
+                  
                   <div className="flex items-start space-x-3">
                     <div className="bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
                       3
@@ -131,35 +123,6 @@ const Index = () => {
                       </p>
                     </div>
                   </div>
-                </div>
-
-                {/* Botao agendar */}
-                <div className="pt-6 text-center">
-                  <Dialog open={showUserLogin} onOpenChange={setShowUserLogin}>
-                    <DialogTrigger asChild>
-                      <Button className="w-full bg-barber-primary text-white hover:bg-barber-primary/90">
-                        Realizar Agendamento
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-md">
-                      <div className="space-y-4">
-                        <h2 className="text-xl font-semibold text-center">Identificação</h2>
-                        <div className="space-y-3">
-                          <input
-                            type="text"
-                            placeholder="Digite seu nome completo"
-                            value={userName}
-                            onChange={(e) => setUserName(e.target.value)}
-                            className="w-full px-3 py-2 border border-input rounded-md bg-background"
-                            onKeyDown={(e) => e.key === 'Enter' && handleUserLoginSubmit()}
-                          />
-                          <Button onClick={handleUserLoginSubmit} className="w-full">
-                            Continuar
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
                 </div>
               </div>
             </div>
@@ -198,16 +161,18 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <main className="flex-1">
+    <div className="min-h-screen bg-background">
+      <Header
+        currentUser={currentUser}
+        isAdmin={isAdmin}
+        onUserLogin={handleUserLogin}
+        onAdminLogin={handleAdminLogin}
+        onLogout={handleLogout}
+      />
+      
+      <main>
         {renderContent()}
       </main>
-
-      {/* Horário de funcionamento */}
-      <footer className="text-center text-sm text-muted-foreground py-6">
-        Horário de funcionamento <br />
-        <span className="block">Seg - Sáb: 7h às 20h | Dom: Fechado</span>
-      </footer>
     </div>
   );
 };

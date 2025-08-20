@@ -22,24 +22,32 @@ interface TimeSlotSelectionProps {
 }
 
 const timeSlots: TimeSlot[] = [
-  { time: '08:00', available: true },
-  { time: '08:30', available: true },
-  { time: '09:00', available: false },
-  { time: '09:30', available: true },
+  { time: '07:00', available: true },
+  
+  { time: '08:00', available: false },
+  
+  { time: '09:00', available: true },
+  
   { time: '10:00', available: true },
-  { time: '10:30', available: false },
+  
   { time: '11:00', available: true },
-  { time: '11:30', available: true },
+
   { time: '13:00', available: true },
-  { time: '13:30', available: true },
+  
   { time: '14:00', available: false },
-  { time: '14:30', available: true },
+  
   { time: '15:00', available: true },
-  { time: '15:30', available: true },
-  { time: '16:00', available: false },
-  { time: '16:30', available: true },
+
+  { time: '16:00', available: true },
+
   { time: '17:00', available: true },
-  { time: '17:30', available: true },
+
+  { time: '18:00', available: true },
+
+  { time: '19:00', available: true },
+
+  { time: '20:00', available: false },
+  
 ];
 
 const serviceNames: Record<string, string> = {
@@ -49,11 +57,11 @@ const serviceNames: Record<string, string> = {
   'eyebrow': 'Sobrancelha'
 };
 
-const TimeSlotSelection = ({ 
-  selectedDate, 
-  selectedTime, 
-  onDateSelect, 
-  onTimeSelect, 
+const TimeSlotSelection = ({
+  selectedDate,
+  selectedTime,
+  onDateSelect,
+  onTimeSelect,
   onConfirm,
   selectedService,
   userName
@@ -100,7 +108,11 @@ const TimeSlotSelection = ({
             mode="single"
             selected={selectedDate}
             onSelect={(date) => date && onDateSelect(date)}
-            disabled={(date) => date < new Date() || date.getDay() === 0}
+            disabled={(date) => {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0); // ignora horas
+              return date < today || date.getDay() === 0;
+            }}
             className="rounded-md"
           />
         </Card>
@@ -108,12 +120,12 @@ const TimeSlotSelection = ({
         {/* Time Slots */}
         <Card className="p-4">
           <h3 className="font-semibold mb-4">
-            {selectedDate 
+            {selectedDate
               ? `Horários para ${format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}`
               : 'Selecione uma data primeiro'
             }
           </h3>
-          
+
           {selectedDate ? (
             <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto">
               {timeSlots.map((slot) => (
@@ -123,11 +135,10 @@ const TimeSlotSelection = ({
                   size="sm"
                   disabled={!slot.available}
                   onClick={() => onTimeSelect(slot.time)}
-                  className={`${
-                    !slot.available 
-                      ? 'opacity-50 cursor-not-allowed' 
+                  className={`${!slot.available
+                      ? 'opacity-50 cursor-not-allowed'
                       : ''
-                  }`}
+                    }`}
                 >
                   {slot.time}
                 </Button>
