@@ -19,35 +19,23 @@ interface TimeSlotSelectionProps {
   onConfirm: () => void;
   selectedService: string;
   userName: string;
+  userPhone: string; // novo
 }
 
 const timeSlots: TimeSlot[] = [
   { time: '07:00', available: true },
-  
-  { time: '08:00', available: false },
-  
+  { time: '08:00', available: true },
   { time: '09:00', available: true },
-  
   { time: '10:00', available: true },
-  
   { time: '11:00', available: true },
-
   { time: '13:00', available: true },
-  
-  { time: '14:00', available: false },
-  
+  { time: '14:00', available: true },
   { time: '15:00', available: true },
-
   { time: '16:00', available: true },
-
   { time: '17:00', available: true },
-
   { time: '18:00', available: true },
-
   { time: '19:00', available: true },
-
-  { time: '20:00', available: false },
-  
+  { time: '20:00', available: true },
 ];
 
 const serviceNames: Record<string, string> = {
@@ -64,16 +52,49 @@ const TimeSlotSelection = ({
   onTimeSelect,
   onConfirm,
   selectedService,
-  userName
+  userName,
+  userPhone
 }: TimeSlotSelectionProps) => {
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleConfirm = () => {
-    setShowConfirmation(true);
-    setTimeout(() => {
-      onConfirm();
-      setShowConfirmation(false);
-    }, 2000);
+  const handleConfirm = async () => {
+    if (!selectedDate || !selectedTime) return;
+
+    const bookingData = {
+      nome: userName,
+      telefone: userPhone,
+      servico: selectedService,
+      data: selectedDate.toISOString().split("T")[0], // YYYY-MM-DD
+      horario: selectedTime
+    };
+
+    try {
+      setLoading(true);
+      const res = await fetch("http://localhost:5000/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bookingData)
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        alert(error.error || "Erro ao salvar agendamento");
+        setLoading(false);
+        return;
+      }
+
+      setShowConfirmation(true);
+      setTimeout(() => {
+        onConfirm();
+        setShowConfirmation(false);
+        setLoading(false);
+      }, 2000);
+    } catch (err) {
+      console.error("Erro ao salvar agendamento", err);
+      alert("Erro ao salvar agendamento");
+      setLoading(false);
+    }
   };
 
   if (showConfirmation) {
@@ -110,7 +131,7 @@ const TimeSlotSelection = ({
             onSelect={(date) => date && onDateSelect(date)}
             disabled={(date) => {
               const today = new Date();
-              today.setHours(0, 0, 0, 0); // ignora horas
+              today.setHours(0,0,0,0);
               return date < today || date.getDay() === 0;
             }}
             className="rounded-md"
@@ -122,8 +143,7 @@ const TimeSlotSelection = ({
           <h3 className="font-semibold mb-4">
             {selectedDate
               ? `Horários para ${format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}`
-              : 'Selecione uma data primeiro'
-            }
+              : 'Selecione uma data primeiro'}
           </h3>
 
           {selectedDate ? (
@@ -133,12 +153,9 @@ const TimeSlotSelection = ({
                   key={slot.time}
                   variant={selectedTime === slot.time ? 'default' : 'outline'}
                   size="sm"
-                  disabled={!slot.available}
+                  disabled={!slot.available || loading}
                   onClick={() => onTimeSelect(slot.time)}
-                  className={`${!slot.available
-                      ? 'opacity-50 cursor-not-allowed'
-                      : ''
-                    }`}
+                  className={`${!slot.available ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {slot.time}
                 </Button>
@@ -157,12 +174,13 @@ const TimeSlotSelection = ({
           <h3 className="font-semibold mb-3">Resumo do Agendamento</h3>
           <div className="space-y-2 text-sm">
             <p><span className="font-medium">Cliente:</span> {userName}</p>
+            <p><span className="font-medium">Telefone:</span> {userPhone}</p>
             <p><span className="font-medium">Serviço:</span> {serviceNames[selectedService]}</p>
             <p><span className="font-medium">Data:</span> {format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
             <p><span className="font-medium">Horário:</span> {selectedTime}</p>
           </div>
-          <Button onClick={handleConfirm} className="w-full mt-4">
-            Confirmar Agendamento
+          <Button onClick={handleConfirm} className="w-full mt-4" disabled={loading}>
+            {loading ? "Salvando..." : "Confirmar Agendamento"}
           </Button>
         </Card>
       )}

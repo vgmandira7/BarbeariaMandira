@@ -7,7 +7,7 @@ import AdminLogin from './AdminLogin';
 interface HeaderProps {
   currentUser: string | null;
   isAdmin: boolean;
-  onUserLogin: (name: string) => void;
+  onUserLogin: (name: string, phone: string) => void; // agora recebe nome e telefone
   onAdminLogin: () => void;
   onLogout: () => void;
 }
@@ -15,11 +15,13 @@ interface HeaderProps {
 const Header = ({ currentUser, isAdmin, onUserLogin, onAdminLogin, onLogout }: HeaderProps) => {
   const [showUserLogin, setShowUserLogin] = useState(false);
   const [userName, setUserName] = useState('');
+  const [userPhone, setUserPhone] = useState('');
 
   const handleUserLogin = () => {
-    if (userName.trim()) {
-      onUserLogin(userName.trim());
+    if (userName.trim() && userPhone.trim()) {
+      onUserLogin(userName.trim(), userPhone.trim());
       setUserName('');
+      setUserPhone('');
       setShowUserLogin(false);
     }
   };
@@ -67,6 +69,14 @@ const Header = ({ currentUser, isAdmin, onUserLogin, onAdminLogin, onLogout }: H
                         placeholder="Digite seu nome completo"
                         value={userName}
                         onChange={(e) => setUserName(e.target.value)}
+                        className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                        onKeyPress={(e) => e.key === 'Enter' && handleUserLogin()}
+                      />
+                      <input
+                        type="tel"
+                        placeholder="Digite seu telefone"
+                        value={userPhone}
+                        onChange={(e) => setUserPhone(e.target.value)}
                         className="w-full px-3 py-2 border border-input rounded-md bg-background"
                         onKeyPress={(e) => e.key === 'Enter' && handleUserLogin()}
                       />

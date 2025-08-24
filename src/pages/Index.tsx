@@ -10,6 +10,7 @@ type Step = 'welcome' | 'service' | 'booking' | 'admin';
 
 const Index = () => {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [userPhone, setUserPhone] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentStep, setCurrentStep] = useState<Step>('welcome');
   const [selectedService, setSelectedService] = useState<string | null>(null);
@@ -17,9 +18,11 @@ const Index = () => {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [showUserLogin, setShowUserLogin] = useState(false);
   const [userName, setUserName] = useState('');
+  const [userPhoneInput, setUserPhoneInput] = useState('');
 
-  const handleUserLogin = (name: string) => {
+  const handleUserLogin = (name: string, phone: string) => {
     setCurrentUser(name);
+    setUserPhone(phone);
     setIsAdmin(false);
     setCurrentStep('service');
   };
@@ -32,6 +35,7 @@ const Index = () => {
 
   const handleLogout = () => {
     setCurrentUser(null);
+    setUserPhone(null);
     setIsAdmin(false);
     setCurrentStep('welcome');
     setSelectedService(null);
@@ -65,17 +69,15 @@ const Index = () => {
   };
 
   const handleUserLoginSubmit = () => {
-    if (userName.trim()) {
-      handleUserLogin(userName.trim());
+    if (userName.trim() && userPhoneInput.trim()) {
+      handleUserLogin(userName.trim(), userPhoneInput.trim());
       setUserName('');
       setShowUserLogin(false);
     }
   };
 
   const renderContent = () => {
-    if (isAdmin) {
-      return <AdminPanel />;
-    }
+    if (isAdmin) return <AdminPanel />;
 
     switch (currentStep) {
       case 'welcome':
@@ -84,7 +86,6 @@ const Index = () => {
             <div className="text-center max-w-2xl mx-auto px-4">
               <div className="mb-8">
                 <Scissors className="h-20 w-20 text-barber-primary mx-auto mb-6" />
-                
                 <h1 className="text-5xl font-bold text-barber-primary mb-4">
                   BARBEARIA MANDIRA
                 </h1>
@@ -95,6 +96,7 @@ const Index = () => {
 
               <div className="space-y-4 text-left bg-card p-8 rounded-lg border">
                 <h2 className="text-2xl font-semibold mb-6 text-center">Como Funciona</h2>
+
                 <div className="space-y-4">
                   <div className="flex items-start space-x-3">
                     <div className="bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
@@ -103,7 +105,7 @@ const Index = () => {
                     <div>
                       <h3 className="font-medium">Identifique-se</h3>
                       <p className="text-sm text-muted-foreground">
-                        Digite seu nome para começar o agendamento
+                        Digite seu nome e telefone para começar o agendamento
                       </p>
                     </div>
                   </div>
@@ -133,7 +135,6 @@ const Index = () => {
                   </div>
                 </div>
 
-                {/* Botao agendar */}
                 <div className="pt-6 text-center">
                   <Dialog open={showUserLogin} onOpenChange={setShowUserLogin}>
                     <DialogTrigger asChild>
@@ -150,6 +151,14 @@ const Index = () => {
                             placeholder="Digite seu nome completo"
                             value={userName}
                             onChange={(e) => setUserName(e.target.value)}
+                            className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                            onKeyDown={(e) => e.key === 'Enter' && handleUserLoginSubmit()}
+                          />
+                          <input
+                            type="tel"
+                            placeholder="Digite seu telefone"
+                            value={userPhoneInput}
+                            onChange={(e) => setUserPhoneInput(e.target.value)}
                             className="w-full px-3 py-2 border border-input rounded-md bg-background"
                             onKeyDown={(e) => e.key === 'Enter' && handleUserLoginSubmit()}
                           />
@@ -188,6 +197,7 @@ const Index = () => {
               onConfirm={handleBookingConfirm}
               selectedService={selectedService!}
               userName={currentUser!}
+              userPhone={userPhone!}
             />
           </div>
         );
@@ -199,11 +209,8 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <main className="flex-1">
-        {renderContent()}
-      </main>
+      <main className="flex-1">{renderContent()}</main>
 
-      {/* Horário de funcionamento */}
       <footer className="text-center text-sm text-muted-foreground py-6">
         Horário de funcionamento <br />
         <span className="block">Seg - Sáb: 7h às 20h | Dom: Fechado</span>

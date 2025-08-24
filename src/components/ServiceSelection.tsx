@@ -22,7 +22,7 @@ const services: Service[] = [
     id: 'hair',
     name: 'Cabelo',
     description: 'Corte de cabelo personalizado',
-    price: 'R$ 25',
+    price: 'R$ 30',
     duration: '30 min à 1h'
   },
   {
@@ -35,7 +35,7 @@ const services: Service[] = [
   {
     id: 'beard',
     name: 'Barba',
-    description: 'Corte e aparamento de barba',
+    description: 'Aparamento de barba',
     price: 'R$ 15',
     duration: '30 min'
   }
