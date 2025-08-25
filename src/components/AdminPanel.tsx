@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -6,89 +6,73 @@ import { Badge } from "@/components/ui/badge";
 import { Users, Plus, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import NewAppointmentForm from './NewAppointmentForm';
+import NovoAgendamento from './newSchedule';
 
 interface Appointment {
   id: string;
-  clientName: string;
-  service: string;
-  time: string;
-  date: string;
+  nome: string;
+  telefone: string;
+  servico: string;
+  horario: string;
+  data: string;
 }
 
-const mockAppointments: Appointment[] = [
-  {
-    id: '1',
-    clientName: 'João Silva',
-    service: 'Cabelo + Barba',
-    time: '09:00',
-    date: '2024-01-20'
-  },
-  {
-    id: '2',
-    clientName: 'Pedro Santos',
-    service: 'Cabelo',
-    time: '10:30',
-    date: '2024-01-20'
-  },
-  {
-    id: '3',
-    clientName: 'Carlos Lima',
-    service: 'Barba',
-    time: '14:00',
-    date: '2024-01-20'
-  }
-];
-
 const serviceNames: Record<string, string> = {
-  'hair': 'Cabelo',
-  'hair-beard': 'Cabelo + Barba',
-  'beard': 'Barba',
-  'eyebrow': 'Sobrancelha'
+  'cabelo': 'Cabelo',
+  'cabelo + barba': 'Cabelo + Barba',
+  'barba': 'Barba',
+  'sobrancelha': 'Sobrancelha',
 };
 
 const AdminPanel = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [appointments, setAppointments] = useState<Appointment[]>(mockAppointments);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
 
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-  const dayAppointments = appointments.filter(apt => apt.date === selectedDateStr);
+  const dayAppointments = appointments.filter(apt => apt.data === selectedDateStr);
 
-  const handleNewAppointment = (appointment: Omit<Appointment, 'id'>) => {
-    const newAppointment = {
-      ...appointment,
-      id: Date.now().toString()
+  // Pegar agendamentos do backend
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/bookings");
+        const data = await res.json();
+        setAppointments(data);
+      } catch (err) {
+        console.error("Erro ao buscar agendamentos", err);
+      }
     };
-    setAppointments([...appointments, newAppointment]);
+    fetchAppointments();
+  }, []);
+
+  // Atualizar lista após novo agendamento
+  const refreshAppointments = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/bookings");
+      const data = await res.json();
+      setAppointments(data);
+    } catch (err) {
+      console.error("Erro ao atualizar agendamentos", err);
+    }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-8">
+      {/* Cabeçalho e Botão Novo Agendamento */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Painel do Barbeiro</h1>
           <p className="text-muted-foreground">Gerencie seus agendamentos</p>
         </div>
-        
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Agendamento
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <NewAppointmentForm onSubmit={handleNewAppointment} />
-          </DialogContent>
-        </Dialog>
+
+        <NovoAgendamento onAgendamentoCriado={refreshAppointments} />
       </div>
 
+      {/* Calendário e Agendamentos do Dia */}
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Calendar */}
-        <Card className="p-4">
-          <h3 className="font-semibold mb-4 flex items-center">
-            <CalendarIcon className="h-4 w-4 mr-2" />
+        <Card className="p-6 shadow-md">
+          <h3 className="font-semibold mb-4 flex items-center text-lg">
+            <CalendarIcon className="h-5 w-5 mr-2" />
             Selecionar Data
           </h3>
           <Calendar
@@ -99,58 +83,52 @@ const AdminPanel = () => {
           />
         </Card>
 
-        {/* Daily Schedule */}
-        <Card className="lg:col-span-2 p-4">
+        <Card className="lg:col-span-2 p-6 shadow-md">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold flex items-center">
-              <Users className="h-4 w-4 mr-2" />
+            <h3 className="font-semibold flex items-center text-lg">
+              <Users className="h-5 w-5 mr-2" />
               Agendamentos - {format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </h3>
-            <Badge variant="secondary">
-              {dayAppointments.length} agendamento(s)
-            </Badge>
+            <Badge variant="secondary">{dayAppointments.length} agendamento(s)</Badge>
           </div>
 
           {dayAppointments.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[480px] overflow-y-auto pr-2">
               {dayAppointments
-                .sort((a, b) => a.time.localeCompare(b.time))
-                .map((appointment) => (
-                <Card key={appointment.id} className="p-3 bg-accent">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{appointment.time}</span>
+                .sort((a, b) => a.horario.localeCompare(b.horario))
+                .map((apt) => (
+                  <Card key={apt.id} className="p-4 bg-accent shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{apt.horario}</span>
+                        </div>
+                        <div>
+                          <p className="font-medium">{apt.nome}</p>
+                          <p className="text-sm text-muted-foreground">{apt.telefone}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {serviceNames[apt.servico] || apt.servico}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">{appointment.clientName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {serviceNames[appointment.service] || appointment.service}
-                        </p>
-                      </div>
+                      <Badge variant="outline">{serviceNames[apt.servico] || apt.servico}</Badge>
                     </div>
-                    <Badge variant="outline">
-                      {serviceNames[appointment.service] || appointment.service}
-                    </Badge>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                ))}
             </div>
           ) : (
             <div className="text-center py-12">
               <CalendarIcon className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">
-                Nenhum agendamento para esta data
-              </p>
+              <p className="text-muted-foreground">Nenhum agendamento para esta data</p>
             </div>
           )}
         </Card>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4">
+      {/* Estatísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="p-6 shadow-md">
           <div className="flex items-center space-x-3">
             <div className="bg-primary/10 p-2 rounded-lg">
               <Users className="h-5 w-5 text-primary" />
@@ -158,13 +136,13 @@ const AdminPanel = () => {
             <div>
               <p className="text-sm text-muted-foreground">Hoje</p>
               <p className="text-xl font-bold">
-                {appointments.filter(apt => apt.date === format(new Date(), 'yyyy-MM-dd')).length}
+                {appointments.filter(apt => apt.data === format(new Date(), 'yyyy-MM-dd')).length}
               </p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-6 shadow-md">
           <div className="flex items-center space-x-3">
             <div className="bg-success/10 p-2 rounded-lg">
               <CalendarIcon className="h-5 w-5 text-success" />
@@ -176,7 +154,7 @@ const AdminPanel = () => {
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-6 shadow-md">
           <div className="flex items-center space-x-3">
             <div className="bg-accent p-2 rounded-lg">
               <Clock className="h-5 w-5 text-muted-foreground" />
@@ -184,8 +162,8 @@ const AdminPanel = () => {
             <div>
               <p className="text-sm text-muted-foreground">Próximo</p>
               <p className="text-sm font-medium">
-                {dayAppointments.length > 0 
-                  ? `${dayAppointments[0].time} - ${dayAppointments[0].clientName}`
+                {dayAppointments.length > 0
+                  ? `${dayAppointments[0].horario} - ${dayAppointments[0].nome}`
                   : 'Nenhum agendamento'
                 }
               </p>

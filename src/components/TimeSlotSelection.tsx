@@ -19,7 +19,7 @@ interface TimeSlotSelectionProps {
   onConfirm: () => void;
   selectedService: string;
   userName: string;
-  userPhone: string; // novo
+  userPhone: string;
 }
 
 const timeSlots: TimeSlot[] = [
@@ -39,10 +39,9 @@ const timeSlots: TimeSlot[] = [
 ];
 
 const serviceNames: Record<string, string> = {
-  'hair': 'Cabelo',
-  'hair-beard': 'Cabelo + Barba',
-  'beard': 'Barba',
-  'eyebrow': 'Sobrancelha'
+  'cabelo': 'Cabelo',
+  'cabelo + barba': 'Cabelo + Barba',
+  'barba': 'Barba',
 };
 
 const TimeSlotSelection = ({
@@ -57,6 +56,26 @@ const TimeSlotSelection = ({
 }: TimeSlotSelectionProps) => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [bookedTimes, setBookedTimes] = useState<string[]>([]);
+
+  const handleDateSelect = async (date: Date) => {
+    onDateSelect(date);
+
+    try {
+      const res = await fetch("http://localhost:5000/api/bookings");
+      const allBookings = await res.json();
+
+      // filtra só os agendamentos da data escolhida
+      const dayBookings = allBookings.filter(
+        (b: any) => b.data === date.toISOString().split("T")[0]
+      );
+
+      // salva só os horários ocupados
+      setBookedTimes(dayBookings.map((b: any) => b.horario));
+    } catch (err) {
+      console.error("Erro ao buscar agendamentos", err);
+    }
+  };
 
   const handleConfirm = async () => {
     if (!selectedDate || !selectedTime) return;
@@ -128,10 +147,10 @@ const TimeSlotSelection = ({
           <Calendar
             mode="single"
             selected={selectedDate}
-            onSelect={(date) => date && onDateSelect(date)}
+            onSelect={(date) => date && handleDateSelect(date)}
             disabled={(date) => {
               const today = new Date();
-              today.setHours(0,0,0,0);
+              today.setHours(0, 0, 0, 0);
               return date < today || date.getDay() === 0;
             }}
             className="rounded-md"
@@ -148,18 +167,22 @@ const TimeSlotSelection = ({
 
           {selectedDate ? (
             <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto">
-              {timeSlots.map((slot) => (
-                <Button
-                  key={slot.time}
-                  variant={selectedTime === slot.time ? 'default' : 'outline'}
-                  size="sm"
-                  disabled={!slot.available || loading}
-                  onClick={() => onTimeSelect(slot.time)}
-                  className={`${!slot.available ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {slot.time}
-                </Button>
-              ))}
+              {timeSlots.map((slot) => {
+                const isBooked = bookedTimes.includes(slot.time);
+
+                return (
+                  <Button
+                    key={slot.time}
+                    variant={selectedTime === slot.time ? 'default' : 'outline'}
+                    size="sm"
+                    disabled={isBooked || loading}
+                    onClick={() => onTimeSelect(slot.time)}
+                    className={`${isBooked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {slot.time}
+                  </Button>
+                );
+              })}
             </div>
           ) : (
             <p className="text-muted-foreground text-center py-8">
