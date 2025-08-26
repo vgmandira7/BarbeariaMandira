@@ -22,6 +22,7 @@ interface TimeSlotSelectionProps {
   userPhone: string;
 }
 
+// horários fixos
 const timeSlots: TimeSlot[] = [
   { time: '07:00', available: true },
   { time: '08:00', available: true },
@@ -44,6 +45,10 @@ const serviceNames: Record<string, string> = {
   'barba': 'Barba',
 };
 
+// margem configurável (minutos)
+const MARGIN_MINUTES = 15; // <- aqui é 15 minutos: ex. 14:45 bloqueia 15:00
+const MARGIN_MS = MARGIN_MINUTES * 60 * 1000;
+
 const TimeSlotSelection = ({
   selectedDate,
   selectedTime,
@@ -65,12 +70,10 @@ const TimeSlotSelection = ({
       const res = await fetch("http://localhost:5000/api/bookings");
       const allBookings = await res.json();
 
-      // filtra só os agendamentos da data escolhida
       const dayBookings = allBookings.filter(
         (b: any) => b.data === date.toISOString().split("T")[0]
       );
 
-      // salva só os horários ocupados
       setBookedTimes(dayBookings.map((b: any) => b.horario));
     } catch (err) {
       console.error("Erro ao buscar agendamentos", err);
@@ -84,7 +87,7 @@ const TimeSlotSelection = ({
       nome: userName,
       telefone: userPhone,
       servico: selectedService,
-      data: selectedDate.toISOString().split("T")[0], // YYYY-MM-DD
+      data: selectedDate.toISOString().split("T")[0],
       horario: selectedTime
     };
 
@@ -170,14 +173,31 @@ const TimeSlotSelection = ({
               {timeSlots.map((slot) => {
                 const isBooked = bookedTimes.includes(slot.time);
 
+                // Verifica se horário já passou (considerando MARGIN_MINUTES)
+                let isPast = false;
+                if (selectedDate) {
+                  const now = new Date();
+                  const slotDateTime = new Date(selectedDate);
+                  const [hour, minute] = slot.time.split(":").map(Number);
+                  slotDateTime.setHours(hour, minute, 0, 0);
+
+                  // se o slot for para hoje e estiver a menos ou igual à margem => bloqueia
+                  if (
+                    slotDateTime.toDateString() === now.toDateString() &&
+                    slotDateTime.getTime() <= now.getTime() + MARGIN_MS
+                  ) {
+                    isPast = true;
+                  }
+                }
+
                 return (
                   <Button
                     key={slot.time}
                     variant={selectedTime === slot.time ? 'default' : 'outline'}
                     size="sm"
-                    disabled={isBooked || loading}
+                    disabled={isBooked || isPast || loading}
                     onClick={() => onTimeSelect(slot.time)}
-                    className={`${isBooked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`${(isBooked || isPast) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {slot.time}
                   </Button>

@@ -19,21 +19,21 @@ interface ServiceSelectionProps {
 
 const services: Service[] = [
   {
-    id: 'hair',
+    id: 'cabelo',
     name: 'Cabelo',
     description: 'Corte de cabelo personalizado',
     price: 'R$ 30',
     duration: '30 min à 1h'
   },
   {
-    id: 'hair-beard',
+    id: 'cabelo + barba',
     name: 'Cabelo + Barba',
     description: 'Corte de cabelo + barba',
     price: 'R$ 40',
     duration: '30 min à 1h'
   },
   {
-    id: 'beard',
+    id: 'barba',
     name: 'Barba',
     description: 'Aparamento de barba',
     price: 'R$ 15',
