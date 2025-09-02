@@ -60,13 +60,41 @@ const Index = () => {
   };
 
   const handleBookingConfirm = () => {
-    setTimeout(() => {
-      setCurrentStep('service');
-      setSelectedService(null);
-      setSelectedDate(null);
-      setSelectedTime(null);
-    }, 2000);
-  };
+  if (!selectedDate || !selectedTime || !selectedService) return;
+
+  // Criar objeto Date com data + hora escolhida
+  const [hour, minute] = selectedTime.split(":").map(Number);
+  const eventStart = new Date(selectedDate);
+  eventStart.setHours(hour, minute, 0);
+
+  const eventEnd = new Date(eventStart);
+  eventEnd.setHours(eventStart.getHours() + 1); // duração de 1h
+
+  // Converter para formato YYYYMMDDTHHmmssZ (UTC)
+  const formatDate = (date: Date) =>
+    date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+
+  const startStr = formatDate(eventStart);
+  const endStr = formatDate(eventEnd);
+
+  // Montar link do Google Calendar
+  const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
+    `Agendamento: ${selectedService}`
+  )}&dates=${startStr}/${endStr}&details=${encodeURIComponent(
+    `Cliente: ${currentUser}\nTelefone: ${userPhone}`
+  )}&location=${encodeURIComponent("Barbearia Mandira")}`;
+
+  // Salvar no estado (pra mostrar o botão depois)
+  setTimeout(() => {
+    setCurrentStep("service");
+    setSelectedService(null);
+    setSelectedDate(null);
+    setSelectedTime(null);
+  }, 2000);
+
+  window.open(googleCalendarUrl, "_blank"); // Abre direto no Google Calendar
+};
+
 
   const handleUserLoginSubmit = () => {
     if (userName.trim() && userPhoneInput.trim()) {
@@ -85,7 +113,12 @@ const Index = () => {
           <div className="min-h-[80vh] flex items-center justify-center mt-12">
             <div className="text-center max-w-2xl mx-auto px-4">
               <div className="mb-8">
-                <Scissors className="h-20 w-20 text-barber-primary mx-auto mb-6" />
+                <img
+                  src="/logoBarbearia.jpeg"
+                  alt="Logo Barbearia Mandira"
+                  className="h-28 mx-auto mb-6 object-contain"
+                />
+
                 <h1 className="text-5xl font-bold text-barber-primary mb-4">
                   BARBEARIA MANDIRA
                 </h1>

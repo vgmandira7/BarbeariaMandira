@@ -1,9 +1,21 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import TimeSlotSelection from "./TimeSlotSelection";
 
@@ -27,55 +39,63 @@ const NovoAgendamento = ({ onAgendamentoCriado }: NovoAgendamentoProps) => {
     setHorario(null);
   };
 
-  // Chamado depois que o TimeSlotSelection salvar com sucesso (onConfirm)
   const handleConfirmou = async () => {
     setOpen(false);
     resetar();
     try {
       await onAgendamentoCriado?.();
     } catch {
-      // se der erro no refresh, só ignora para não travar o fluxo do barbeiro
+      // ignora erro no refresh para não travar o barbeiro
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
+        <Button className="flex items-center gap-2">
+          <Plus className="h-4 w-4" />
           Novo Agendamento
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-5xl w-full max-h-[90vh] overflow-y-auto p-6">
         <DialogHeader>
-          <DialogTitle>Novo Agendamento</DialogTitle>
+          <DialogTitle className="text-xl font-semibold">
+            Novo Agendamento
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="grid md:grid-cols-3 gap-4">
-          <div className="md:col-span-1 space-y-4">
+        <div className="flex flex-col gap-6 md:flex-row md:gap-4">
+          {/* Coluna do formulário */}
+          <div className="w-full md:flex-1 md:max-w-[280px] mx-auto md:mx-0 space-y-4">
             <div>
-              <Label htmlFor="nome">Nome do Cliente</Label>
+              <Label htmlFor="nome" className="text-sm">
+                Nome do Cliente
+              </Label>
               <Input
                 id="nome"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 placeholder="Ex: João Silva"
+                className="h-8 text-sm"
               />
             </div>
             <div>
-              <Label htmlFor="tel">Telefone</Label>
+              <Label htmlFor="tel" className="text-sm">
+                Telefone
+              </Label>
               <Input
                 id="tel"
                 value={telefone}
                 onChange={(e) => setTelefone(e.target.value)}
                 placeholder="(xx) xxxxx-xxxx"
+                className="h-8 text-sm"
               />
             </div>
             <div>
-              <Label>Serviço</Label>
+              <Label className="text-sm">Serviço</Label>
               <Select value={servico} onValueChange={setServico}>
-                <SelectTrigger>
+                <SelectTrigger className="h-8 text-sm">
                   <SelectValue placeholder="Selecione um serviço" />
                 </SelectTrigger>
                 <SelectContent>
@@ -90,7 +110,8 @@ const NovoAgendamento = ({ onAgendamentoCriado }: NovoAgendamentoProps) => {
             </p>
           </div>
 
-          <div className="md:col-span-2">
+          {/* Coluna de calendário + horários */}
+          <div className="w-full md:flex-1">
             <TimeSlotSelection
               selectedDate={data}
               selectedTime={horario}
@@ -100,6 +121,7 @@ const NovoAgendamento = ({ onAgendamentoCriado }: NovoAgendamentoProps) => {
               selectedService={servico}
               userName={nome}
               userPhone={telefone}
+              showGoogleCalendarButton={false} // botão oculto aqui
             />
           </div>
         </div>

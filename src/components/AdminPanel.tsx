@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
-import { Users, Plus, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { Users, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import NovoAgendamento from './newSchedule';
@@ -27,9 +27,6 @@ const serviceNames: Record<string, string> = {
 const AdminPanel = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-
-  const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-  const dayAppointments = appointments.filter(apt => apt.data === selectedDateStr);
 
   // Pegar agendamentos do backend
   useEffect(() => {
@@ -55,6 +52,23 @@ const AdminPanel = () => {
       console.error("Erro ao atualizar agendamentos", err);
     }
   };
+
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const currentTime = new Date().getTime();
+
+  // Próximo corte baseado em data e horário atual
+  const upcomingAppointments = appointments
+    .map((apt) => {
+      const aptDateTime = new Date(`${apt.data}T${apt.horario}:00`);
+      return { ...apt, dateTime: aptDateTime };
+    })
+    .filter((apt) => apt.dateTime.getTime() >= currentTime)
+    .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
+
+  const nextAppointment = upcomingAppointments[0];
+
+  const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+  const dayAppointments = appointments.filter(apt => apt.data === selectedDateStr);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-8">
@@ -162,10 +176,9 @@ const AdminPanel = () => {
             <div>
               <p className="text-sm text-muted-foreground">Próximo</p>
               <p className="text-sm font-medium">
-                {dayAppointments.length > 0
-                  ? `${dayAppointments[0].horario} - ${dayAppointments[0].nome}`
-                  : 'Nenhum agendamento'
-                }
+                {nextAppointment
+                  ? `${format(nextAppointment.dateTime, "dd/MM/yyyy")} - ${nextAppointment.horario} - ${nextAppointment.nome}`
+                  : 'Nenhum agendamento'}
               </p>
             </div>
           </div>

@@ -20,6 +20,7 @@ interface TimeSlotSelectionProps {
   selectedService: string;
   userName: string;
   userPhone: string;
+  showGoogleCalendarButton?: boolean; // nova prop opcional
 }
 
 // horários fixos
@@ -46,7 +47,7 @@ const serviceNames: Record<string, string> = {
 };
 
 // margem configurável (minutos)
-const MARGIN_MINUTES = 15; // <- aqui é 15 minutos: ex. 14:45 bloqueia 15:00
+const MARGIN_MINUTES = 15;
 const MARGIN_MS = MARGIN_MINUTES * 60 * 1000;
 
 const TimeSlotSelection = ({
@@ -57,7 +58,8 @@ const TimeSlotSelection = ({
   onConfirm,
   selectedService,
   userName,
-  userPhone
+  userPhone,
+  showGoogleCalendarButton = true, // padrão true para manter comportamento atual
 }: TimeSlotSelectionProps) => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -65,23 +67,20 @@ const TimeSlotSelection = ({
 
   const handleDateSelect = async (date: Date) => {
     onDateSelect(date);
-
     try {
       const res = await fetch("http://localhost:5000/api/bookings");
       const allBookings = await res.json();
-
       const dayBookings = allBookings.filter(
         (b: any) => b.data === date.toISOString().split("T")[0]
       );
-
       setBookedTimes(dayBookings.map((b: any) => b.horario));
     } catch (err) {
       console.error("Erro ao buscar agendamentos", err);
     }
   };
 
-  const handleConfirm = async () => {
-    if (!selectedDate || !selectedTime) return;
+  const handleConfirmBooking = async () => {
+    if (!selectedDate || !selectedTime || !selectedService) return;
 
     const bookingData = {
       nome: userName,
@@ -107,11 +106,8 @@ const TimeSlotSelection = ({
       }
 
       setShowConfirmation(true);
-      setTimeout(() => {
-        onConfirm();
-        setShowConfirmation(false);
-        setLoading(false);
-      }, 2000);
+      setLoading(false);
+
     } catch (err) {
       console.error("Erro ao salvar agendamento", err);
       alert("Erro ao salvar agendamento");
@@ -119,20 +115,42 @@ const TimeSlotSelection = ({
     }
   };
 
+  const handleAddToGoogleCalendar = () => {
+    if (!selectedDate || !selectedTime || !selectedService) return;
+
+    const [hour, minute] = selectedTime.split(":").map(Number);
+    const eventStart = new Date(selectedDate);
+    eventStart.setHours(hour, minute, 0);
+    const eventEnd = new Date(eventStart);
+    eventEnd.setHours(eventStart.getHours() + 1);
+
+    const formatDate = (date: Date) =>
+      date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+
+    const startStr = formatDate(eventStart);
+    const endStr = formatDate(eventEnd);
+
+    const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
+      `Agendamento: ${serviceNames[selectedService]}`
+    )}&dates=${startStr}/${endStr}&details=${encodeURIComponent(
+      `Cliente: ${userName}\nTelefone: ${userPhone}`
+    )}&location=${encodeURIComponent("Barbearia Mandira")}`;
+
+    window.open(googleCalendarUrl, "_blank");
+  };
+
   if (showConfirmation) {
     return (
       <div className="text-center py-12">
         <CheckCircle className="h-16 w-16 text-success mx-auto mb-4" />
         <h2 className="text-2xl font-bold text-foreground mb-2">Agendamento Confirmado!</h2>
-        <p className="text-muted-foreground">
-          Seu horário foi reservado com sucesso.
-        </p>
+        <p className="text-muted-foreground">Seu horário foi reservado com sucesso.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-2">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-foreground mb-2">Escolha Data e Horário</h2>
         <p className="text-muted-foreground">
@@ -140,12 +158,11 @@ const TimeSlotSelection = ({
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-        {/* Calendar */}
+      {/* grid melhorado */}
+      <div className="grid md:grid-cols-2 gap-10 max-w-5xl mx-auto">
         <Card className="p-4">
           <h3 className="font-semibold mb-4 flex items-center">
-            <Clock className="h-4 w-4 mr-2" />
-            Selecione uma Data
+            <Clock className="h-4 w-4 mr-2" /> Selecione uma Data
           </h3>
           <Calendar
             mode="single"
@@ -160,28 +177,22 @@ const TimeSlotSelection = ({
           />
         </Card>
 
-        {/* Time Slots */}
         <Card className="p-4">
           <h3 className="font-semibold mb-4">
             {selectedDate
               ? `Horários para ${format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}`
               : 'Selecione uma data primeiro'}
           </h3>
-
           {selectedDate ? (
-            <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto">
+            <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto pr-2">
               {timeSlots.map((slot) => {
                 const isBooked = bookedTimes.includes(slot.time);
-
-                // Verifica se horário já passou (considerando MARGIN_MINUTES)
                 let isPast = false;
                 if (selectedDate) {
                   const now = new Date();
                   const slotDateTime = new Date(selectedDate);
                   const [hour, minute] = slot.time.split(":").map(Number);
                   slotDateTime.setHours(hour, minute, 0, 0);
-
-                  // se o slot for para hoje e estiver a menos ou igual à margem => bloqueia
                   if (
                     slotDateTime.toDateString() === now.toDateString() &&
                     slotDateTime.getTime() <= now.getTime() + MARGIN_MS
@@ -189,7 +200,6 @@ const TimeSlotSelection = ({
                     isPast = true;
                   }
                 }
-
                 return (
                   <Button
                     key={slot.time}
@@ -222,9 +232,24 @@ const TimeSlotSelection = ({
             <p><span className="font-medium">Data:</span> {format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
             <p><span className="font-medium">Horário:</span> {selectedTime}</p>
           </div>
-          <Button onClick={handleConfirm} className="w-full mt-4" disabled={loading}>
-            {loading ? "Salvando..." : "Confirmar Agendamento"}
+
+          {/* Botão Confirmar */}
+          <Button
+            onClick={handleConfirmBooking}
+            className="w-full mt-4 bg-black text-white hover:bg-gray-800"
+          >
+            Confirmar Agendamento
           </Button>
+
+          {/* Botão Google Calendar - renderiza só se showGoogleCalendarButton for true */}
+          {showGoogleCalendarButton && (
+            <Button
+              onClick={handleAddToGoogleCalendar}
+              className="w-full mt-2 bg-black text-white hover:bg-gray-800"
+            >
+              Adicionar ao Google Calendario
+            </Button>
+          )}
         </Card>
       )}
     </div>
