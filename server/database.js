@@ -1,5 +1,11 @@
-import Database from "better-sqlite3";
+// database.js
+import { createClient } from "@libsql/client";
+import 'dotenv/config'; // carrega variáveis do .env
 
-const db = new Database("barbearia.db"); // usa o banco existente
+// Conexão com o Turso
+const db = createClient({
+  url: process.env.TURSO_DATABASE_URL,
+  authToken: process.env.TURSO_AUTH_TOKEN
+});
 
 export default db;

@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import AdminPage from "./pages/AdminPage"; // <-- importa a página
+import AdminPage from "./pages/AdminPage";
+import WhatsAppButton from "./components/ui/whatsAppButton"; // <-- importei aqui
 
 const queryClient = new QueryClient();
 
@@ -17,10 +18,12 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/barbeiro" element={<AdminPage />} /> 
-          {/* rota escondida */}
+          <Route path="/dashboard" element={<AdminPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+
+        {/* Botão do WhatsApp visível em todas as páginas */}
+        <WhatsAppButton />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

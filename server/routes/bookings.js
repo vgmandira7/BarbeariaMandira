@@ -1,94 +1,199 @@
+// bookings.js
 import express from "express";
 import db from "../database.js";
 import { format, startOfWeek, endOfWeek } from "date-fns";
+import { io } from "../server.js";
 
 const router = express.Router();
 
-// criar agendamento
-router.post("/", (req, res) => {
+// -----------------------
+// Criar agendamento
+// -----------------------
+router.post("/", async (req, res) => {
   const { nome, telefone, servico, data, horario } = req.body;
 
   try {
-    const stmt = db.prepare(`
-      INSERT INTO agendamentos (nome, telefone, servico, data, horario)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    const info = stmt.run(nome, telefone, servico, data, horario);
+    const result = await db.execute({
+      sql: `
+        INSERT INTO agendamentos (nome, telefone, servico, data, horario)
+        VALUES (?, ?, ?, ?, ?)
+      `,
+      args: [nome, telefone, servico, data, horario],
+    });
 
-    res.status(201).json({ 
-      id: info.lastInsertRowid, 
-      nome, 
-      telefone, 
-      servico, 
-      data, 
-      horario 
+    const insertedId = result.insertId || null;
+
+    // Emitir evento para todos os clientes conectados
+    io.emit("novo-agendamento", {
+      id: insertedId,
+      nome,
+      telefone,
+      servico,
+      data,
+      horario,
+    });
+
+    res.status(201).json({
+      id: insertedId,
+      nome,
+      telefone,
+      servico,
+      data,
+      horario,
     });
   } catch (err) {
     if (err.code === "SQLITE_CONSTRAINT") {
       return res.status(400).json({ error: "Horário já reservado" });
     }
+    console.error(err);
     res.status(500).json({ error: "Erro ao criar agendamento" });
   }
 });
 
-// listar todos os agendamentos
-router.get("/", (req, res) => {
-  try {
-    const stmt = db.prepare("SELECT * FROM agendamentos ORDER BY data, horario");
-    const bookings = stmt.all();
-    res.json(bookings);
-  } catch (err) {
-    res.status(500).json({ error: "Erro ao buscar agendamentos" });
-  }
-});
-
-// buscar agendamentos por data específica
-router.get("/data/:data", (req, res) => {
+// -----------------------
+// Buscar agendamentos por data
+// -----------------------
+// bookings.js
+router.get("/data/:data", async (req, res) => {
   const { data } = req.params;
+
   try {
-    const stmt = db.prepare("SELECT * FROM agendamentos WHERE date(data) = date(?) ORDER BY horario");
-    const bookings = stmt.all(data);
-    res.json(bookings);
+    const result = await db.execute({
+      sql: `SELECT * FROM agendamentos WHERE data = ? ORDER BY horario`,
+      args: [data],
+    });
+
+    console.log("Resultado da query:", result); // Adicione esta linha
+
+    res.json(result.rows || result.results || []);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Erro ao buscar agendamentos da data" });
   }
 });
 
-// 📊 estatísticas para o painel do barbeiro
-router.get("/stats", (req, res) => {
+// -----------------------
+// Estatísticas para painel
+// -----------------------
+// bookings.js
+router.get("/stats", async (req, res) => {
   try {
     const hoje = format(new Date(), "yyyy-MM-dd");
     const inicioSemana = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
     const fimSemana = format(endOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
 
-    // total de hoje
-    const stmtHoje = db.prepare("SELECT COUNT(*) as total FROM agendamentos WHERE date(data) = date(?)");
-    const hojeCount = stmtHoje.get(hoje).total;
+    // Total de hoje
+    const hojeRes = await db.execute({
+      sql: `
+        SELECT COUNT(*) AS total 
+        FROM agendamentos 
+        WHERE data = ?
+      `,
+      args: [hoje],
+    });
+    const hojeCount = hojeRes.rows?.[0]?.total ?? 0;
 
-    // total da semana
-    const stmtSemana = db.prepare(`
-      SELECT COUNT(*) as total 
-      FROM agendamentos 
-      WHERE date(data) BETWEEN date(?) AND date(?) 
-    `);
-    const semanaCount = stmtSemana.get(inicioSemana, fimSemana).total;
+    // Total da semana
+    const semanaRes = await db.execute({
+      sql: `
+        SELECT COUNT(*) AS total
+        FROM agendamentos
+        WHERE data BETWEEN ? AND ?
+      `,
+      args: [inicioSemana, fimSemana],
+    });
+    const semanaCount = semanaRes.rows?.[0]?.total ?? 0;
 
-    // próximo agendamento
-    const stmtProximo = db.prepare(`
-      SELECT * FROM agendamentos 
-      WHERE date(data) >= date(?) 
-      ORDER BY date(data), horario 
-      LIMIT 1
-    `);
-    const proximo = stmtProximo.get(hoje);
+    // Próximo agendamento
+    const proximoRes = await db.execute({
+      sql: `
+        SELECT * FROM agendamentos
+        WHERE data >= ?
+        ORDER BY data ASC, horario ASC
+        LIMIT 1
+      `,
+      args: [hoje],
+    });
+    const proximo = proximoRes.rows?.[0] ?? null;
 
     res.json({
       hoje: hojeCount,
       semana: semanaCount,
-      proximo: proximo || null
+      proximo,
     });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Erro ao buscar estatísticas" });
+  }
+});// bookings.js
+router.get("/stats", async (req, res) => {
+  try {
+    const hoje = format(new Date(), "yyyy-MM-dd");
+    const inicioSemana = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+    const fimSemana = format(endOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+
+    // Total de hoje
+    const hojeRes = await db.execute({
+      sql: `
+        SELECT COUNT(*) AS total 
+        FROM agendamentos 
+        WHERE data = ?
+      `,
+      args: [hoje],
+    });
+    const hojeCount = hojeRes.rows?.[0]?.total ?? 0;
+
+    // Total da semana
+    const semanaRes = await db.execute({
+      sql: `
+        SELECT COUNT(*) AS total
+        FROM agendamentos
+        WHERE data BETWEEN ? AND ?
+      `,
+      args: [inicioSemana, fimSemana],
+    });
+    const semanaCount = semanaRes.rows?.[0]?.total ?? 0;
+
+    // Próximo agendamento
+    const proximoRes = await db.execute({
+      sql: `
+        SELECT * FROM agendamentos
+        WHERE data >= ?
+        ORDER BY data ASC, horario ASC
+        LIMIT 1
+      `,
+      args: [hoje],
+    });
+    const proximo = proximoRes.rows?.[0] ?? null;
+
+    res.json({
+      hoje: hojeCount,
+      semana: semanaCount,
+      proximo,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao buscar estatísticas" });
+  }
+});
+
+// -----------------------
+// Rota para buscar todas as datas com agendamentos
+// -----------------------
+router.get("/dates-with-bookings", async (req, res) => {
+  try {
+    const result = await db.execute({
+      sql: `
+        SELECT DISTINCT data FROM agendamentos 
+        ORDER BY data ASC
+      `,
+    });
+
+    const dates = result.rows ? result.rows.map(row => row.data) : [];
+    res.json(dates);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao buscar datas com agendamentos" });
   }
 });
 

@@ -245,8 +245,8 @@ const Index = () => {
       <main className="flex-1">{renderContent()}</main>
 
       <footer className="text-center text-sm text-muted-foreground py-6">
-        Horário de funcionamento <br />
-        <span className="block">Seg - Sáb: 7h às 20h | Dom: Fechado</span>
+        Preço sob consulta via WhatsApp.  <br />
+        <span className="block"> Seg - Sáb: 7h às 20h | Dom: Fechado</span>
       </footer>
     </div>
   );

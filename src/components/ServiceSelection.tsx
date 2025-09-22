@@ -22,21 +22,21 @@ const services: Service[] = [
     id: 'cabelo',
     name: 'Cabelo',
     description: 'Corte de cabelo personalizado',
-    price: 'R$ 30',
+    price: 'R$ preço à definir via whatsApp',
     duration: '30 min à 1h'
   },
   {
     id: 'cabelo + barba',
     name: 'Cabelo + Barba',
     description: 'Corte de cabelo + barba',
-    price: 'R$ 40',
+    price: 'R$ preço à definir via whatsApp',
     duration: '30 min à 1h'
   },
   {
     id: 'barba',
     name: 'Barba',
     description: 'Aparamento de barba',
-    price: 'R$ 15',
+    price: 'R$ preço à definir via whatsApp',
     duration: '30 min'
   }
 ];

@@ -19,11 +19,10 @@ import {
 import { Plus } from "lucide-react";
 import TimeSlotSelection from "./TimeSlotSelection";
 
-interface NovoAgendamentoProps {
-  onAgendamentoCriado?: () => void | Promise<void>;
-}
+// 🚨 CORREÇÃO: Variável de ambiente para a URL da API
+const apiUrl = import.meta.env.VITE_API_URL;
 
-const NovoAgendamento = ({ onAgendamentoCriado }: NovoAgendamentoProps) => {
+const NovoAgendamento = () => {
   const [open, setOpen] = useState(false);
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
@@ -39,13 +38,39 @@ const NovoAgendamento = ({ onAgendamentoCriado }: NovoAgendamentoProps) => {
     setHorario(null);
   };
 
-  const handleConfirmou = async () => {
-    setOpen(false);
-    resetar();
+  const handleConfirmBooking = async () => {
+    if (!nome || !telefone || !servico || !data || !horario) return;
+
+    const bookingData = {
+      nome,
+      telefone,
+      servico,
+      data: data.toISOString().split("T")[0],
+      horario,
+    };
+
     try {
-      await onAgendamentoCriado?.();
-    } catch {
-      // ignora erro no refresh para não travar o barbeiro
+      // 🚨 CORREÇÃO: Usando a variável de ambiente para a URL
+      const res = await fetch(`${apiUrl}/bookings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bookingData),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        alert(error.error || "Erro ao criar agendamento");
+        return;
+      }
+
+      await res.json(); // backend já emite pelo socket
+
+      // resetar formulário e fechar modal
+      resetar();
+      setOpen(false);
+    } catch (err) {
+      console.error("Erro ao criar agendamento", err);
+      alert("Erro ao criar agendamento");
     }
   };
 
@@ -66,7 +91,6 @@ const NovoAgendamento = ({ onAgendamentoCriado }: NovoAgendamentoProps) => {
         </DialogHeader>
 
         <div className="flex flex-col gap-6 md:flex-row md:gap-4">
-          {/* Coluna do formulário */}
           <div className="w-full md:flex-1 md:max-w-[280px] mx-auto md:mx-0 space-y-4">
             <div>
               <Label htmlFor="nome" className="text-sm">
@@ -99,9 +123,10 @@ const NovoAgendamento = ({ onAgendamentoCriado }: NovoAgendamentoProps) => {
                   <SelectValue placeholder="Selecione um serviço" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cabelo">Cabelo</SelectItem>
-                  <SelectItem value="cabelo + barba">Cabelo + Barba</SelectItem>
-                  <SelectItem value="barba">Barba</SelectItem>
+                    <SelectItem value="cabelo">Cabelo</SelectItem>
+                    <SelectItem value="cabelo + barba">Cabelo + Barba</SelectItem>
+                    <SelectItem value="barba">Barba</SelectItem>
+                    <SelectItem value="sobrancelha">Sobrancelha</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -110,18 +135,17 @@ const NovoAgendamento = ({ onAgendamentoCriado }: NovoAgendamentoProps) => {
             </p>
           </div>
 
-          {/* Coluna de calendário + horários */}
           <div className="w-full md:flex-1">
             <TimeSlotSelection
               selectedDate={data}
               selectedTime={horario}
               onDateSelect={setData}
               onTimeSelect={setHorario}
-              onConfirm={handleConfirmou}
+              onConfirm={handleConfirmBooking}
               selectedService={servico}
               userName={nome}
               userPhone={telefone}
-              showGoogleCalendarButton={false} // botão oculto aqui
+              showGoogleCalendarButton={false}
             />
           </div>
         </div>

@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Clock, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import socket from '../socket';
 
 interface TimeSlot {
   time: string;
@@ -20,10 +21,12 @@ interface TimeSlotSelectionProps {
   selectedService: string;
   userName: string;
   userPhone: string;
-  showGoogleCalendarButton?: boolean; // nova prop opcional
+  showGoogleCalendarButton?: boolean;
 }
 
-// horários fixos
+// 🚨 CORREÇÃO: Variável de ambiente com fallback para garantir que a URL não seja 'undefined'
+const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 const timeSlots: TimeSlot[] = [
   { time: '07:00', available: true },
   { time: '08:00', available: true },
@@ -44,9 +47,9 @@ const serviceNames: Record<string, string> = {
   'cabelo': 'Cabelo',
   'cabelo + barba': 'Cabelo + Barba',
   'barba': 'Barba',
+  'sobrancelha': 'Sobrancelha',
 };
 
-// margem configurável (minutos)
 const MARGIN_MINUTES = 15;
 const MARGIN_MS = MARGIN_MINUTES * 60 * 1000;
 
@@ -59,24 +62,31 @@ const TimeSlotSelection = ({
   selectedService,
   userName,
   userPhone,
-  showGoogleCalendarButton = true, // padrão true para manter comportamento atual
+  showGoogleCalendarButton = true,
 }: TimeSlotSelectionProps) => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
 
-  const handleDateSelect = async (date: Date) => {
-    onDateSelect(date);
+  const fetchBookings = async (date: Date) => {
     try {
-      const res = await fetch("http://localhost:5000/api/bookings");
-      const allBookings = await res.json();
-      const dayBookings = allBookings.filter(
-        (b: any) => b.data === date.toISOString().split("T")[0]
-      );
+      const formattedDate = format(date, 'yyyy-MM-dd');
+      // 🚨 CORREÇÃO: Uso da variável apiUrl
+      const res = await fetch(`${apiUrl}/bookings/data/${formattedDate}`);
+      if (!res.ok) {
+        throw new Error("Failed to fetch bookings");
+      }
+      const dayBookings = await res.json();
       setBookedTimes(dayBookings.map((b: any) => b.horario));
     } catch (err) {
       console.error("Erro ao buscar agendamentos", err);
     }
+  };
+
+  const handleDateSelect = async (date: Date) => {
+    onDateSelect(date);
+    await fetchBookings(date);
+    onTimeSelect(null);
   };
 
   const handleConfirmBooking = async () => {
@@ -92,7 +102,8 @@ const TimeSlotSelection = ({
 
     try {
       setLoading(true);
-      const res = await fetch("http://localhost:5000/api/bookings", {
+      // 🚨 CORREÇÃO: Uso da variável apiUrl
+      const res = await fetch(`${apiUrl}/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(bookingData)
@@ -107,7 +118,6 @@ const TimeSlotSelection = ({
 
       setShowConfirmation(true);
       setLoading(false);
-
     } catch (err) {
       console.error("Erro ao salvar agendamento", err);
       alert("Erro ao salvar agendamento");
@@ -139,6 +149,18 @@ const TimeSlotSelection = ({
     window.open(googleCalendarUrl, "_blank");
   };
 
+  useEffect(() => {
+    socket.on("novo-agendamento", (data: any) => {
+      if (selectedDate && data.data === format(selectedDate, 'yyyy-MM-dd')) {
+        setBookedTimes((prev) => [...prev, data.horario]);
+      }
+    });
+
+    return () => {
+      socket.off("novo-agendamento");
+    };
+  }, [selectedDate]);
+
   if (showConfirmation) {
     return (
       <div className="text-center py-12">
@@ -158,7 +180,6 @@ const TimeSlotSelection = ({
         </p>
       </div>
 
-      {/* grid melhorado */}
       <div className="grid md:grid-cols-2 gap-10 max-w-5xl mx-auto">
         <Card className="p-4">
           <h3 className="font-semibold mb-4 flex items-center">
@@ -233,7 +254,6 @@ const TimeSlotSelection = ({
             <p><span className="font-medium">Horário:</span> {selectedTime}</p>
           </div>
 
-          {/* Botão Confirmar */}
           <Button
             onClick={handleConfirmBooking}
             className="w-full mt-4 bg-black text-white hover:bg-gray-800"
@@ -241,7 +261,6 @@ const TimeSlotSelection = ({
             Confirmar Agendamento
           </Button>
 
-          {/* Botão Google Calendar - renderiza só se showGoogleCalendarButton for true */}
           {showGoogleCalendarButton && (
             <Button
               onClick={handleAddToGoogleCalendar}

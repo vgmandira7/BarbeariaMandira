@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Users, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import NovoAgendamento from './newSchedule';
+import socket from '../socket'; // import do socket
 
 interface Appointment {
   id: string;
@@ -24,39 +24,51 @@ const serviceNames: Record<string, string> = {
   'sobrancelha': 'Sobrancelha',
 };
 
+// 🚨 CORREÇÃO: Variável de ambiente com fallback para garantir que a URL não seja 'undefined'
+const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 const AdminPanel = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
 
-  // Pegar agendamentos do backend
-  useEffect(() => {
-    const fetchAppointments = async () => {
-      try {
-        const res = await fetch("http://localhost:5000/api/bookings");
-        const data = await res.json();
-        setAppointments(data);
-      } catch (err) {
-        console.error("Erro ao buscar agendamentos", err);
-      }
-    };
-    fetchAppointments();
-  }, []);
-
-  // Atualizar lista após novo agendamento
-  const refreshAppointments = async () => {
+  // 🚨 CORREÇÃO: Função para buscar agendamentos de um DIA ESPECÍFICO
+  const fetchAppointments = async (date: Date) => {
     try {
-      const res = await fetch("http://localhost:5000/api/bookings");
+      const formattedDate = format(date, "yyyy-MM-dd");
+      const res = await fetch(`${apiUrl}/bookings/data/${formattedDate}`);
       const data = await res.json();
       setAppointments(data);
     } catch (err) {
-      console.error("Erro ao atualizar agendamentos", err);
+      console.error("Erro ao buscar agendamentos", err);
     }
   };
 
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const currentTime = new Date().getTime();
+  // Buscar agendamentos ao montar e sempre que a data selecionada mudar
+  useEffect(() => {
+    fetchAppointments(selectedDate);
+  }, [selectedDate]); // Adicionado selectedDate como dependência para recarregar quando a data muda
+
+  // WebSocket: sempre que houver novo agendamento, refetch
+  useEffect(() => {
+    const handleNovoAgendamento = async () => {
+      await fetchAppointments(selectedDate); // 🔄 refaz a busca apenas para a data selecionada
+    };
+
+    socket.off("novo-agendamento");
+    socket.on("novo-agendamento", handleNovoAgendamento);
+
+    // 🔁 fallback: permite que o modal dispare um refresh local
+    const refreshHandler = () => fetchAppointments(selectedDate);
+    window.addEventListener("appointments:refresh", refreshHandler);
+
+    return () => {
+      socket.off("novo-agendamento", handleNovoAgendamento);
+      window.removeEventListener("appointments:refresh", refreshHandler);
+    };
+  }, [selectedDate]);
 
   // Próximo corte baseado em data e horário atual
+  const currentTime = new Date().getTime();
   const upcomingAppointments = appointments
     .map((apt) => {
       const aptDateTime = new Date(`${apt.data}T${apt.horario}:00`);
@@ -64,7 +76,6 @@ const AdminPanel = () => {
     })
     .filter((apt) => apt.dateTime.getTime() >= currentTime)
     .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
-
   const nextAppointment = upcomingAppointments[0];
 
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -79,7 +90,7 @@ const AdminPanel = () => {
           <p className="text-muted-foreground">Gerencie seus agendamentos</p>
         </div>
 
-        <NovoAgendamento onAgendamentoCriado={refreshAppointments} />
+        <NovoAgendamento />
       </div>
 
       {/* Calendário e Agendamentos do Dia */}
