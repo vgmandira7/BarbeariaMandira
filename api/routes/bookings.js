@@ -1,8 +1,6 @@
-// bookings.js
 import express from "express";
 import db from "../database.js";
 import { format, startOfWeek, endOfWeek } from "date-fns";
-import { io } from "../server.js";
 
 const router = express.Router();
 
@@ -23,8 +21,8 @@ router.post("/", async (req, res) => {
 
     const insertedId = result.insertId || null;
 
-    // Emitir evento para todos os clientes conectados
-    io.emit("novo-agendamento", {
+    // Só loga no servidor (já que não tem mais socket.io)
+    console.log("Novo agendamento criado:", {
       id: insertedId,
       nome,
       telefone,
@@ -53,7 +51,6 @@ router.post("/", async (req, res) => {
 // -----------------------
 // Buscar agendamentos por data
 // -----------------------
-// bookings.js
 router.get("/data/:data", async (req, res) => {
   const { data } = req.params;
 
@@ -63,9 +60,7 @@ router.get("/data/:data", async (req, res) => {
       args: [data],
     });
 
-    console.log("Resultado da query:", result); // Adicione esta linha
-
-    res.json(result.rows || result.results || []);
+    res.json(result.rows || []);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Erro ao buscar agendamentos da data" });
@@ -75,7 +70,6 @@ router.get("/data/:data", async (req, res) => {
 // -----------------------
 // Estatísticas para painel
 // -----------------------
-// bookings.js
 router.get("/stats", async (req, res) => {
   try {
     const hoje = format(new Date(), "yyyy-MM-dd");
@@ -84,84 +78,21 @@ router.get("/stats", async (req, res) => {
 
     // Total de hoje
     const hojeRes = await db.execute({
-      sql: `
-        SELECT COUNT(*) AS total 
-        FROM agendamentos 
-        WHERE data = ?
-      `,
+      sql: `SELECT COUNT(*) AS total FROM agendamentos WHERE data = ?`,
       args: [hoje],
     });
     const hojeCount = hojeRes.rows?.[0]?.total ?? 0;
 
     // Total da semana
     const semanaRes = await db.execute({
-      sql: `
-        SELECT COUNT(*) AS total
-        FROM agendamentos
-        WHERE data BETWEEN ? AND ?
-      `,
+      sql: `SELECT COUNT(*) AS total FROM agendamentos WHERE data BETWEEN ? AND ?`,
       args: [inicioSemana, fimSemana],
     });
     const semanaCount = semanaRes.rows?.[0]?.total ?? 0;
 
     // Próximo agendamento
     const proximoRes = await db.execute({
-      sql: `
-        SELECT * FROM agendamentos
-        WHERE data >= ?
-        ORDER BY data ASC, horario ASC
-        LIMIT 1
-      `,
-      args: [hoje],
-    });
-    const proximo = proximoRes.rows?.[0] ?? null;
-
-    res.json({
-      hoje: hojeCount,
-      semana: semanaCount,
-      proximo,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro ao buscar estatísticas" });
-  }
-});// bookings.js
-router.get("/stats", async (req, res) => {
-  try {
-    const hoje = format(new Date(), "yyyy-MM-dd");
-    const inicioSemana = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
-    const fimSemana = format(endOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
-
-    // Total de hoje
-    const hojeRes = await db.execute({
-      sql: `
-        SELECT COUNT(*) AS total 
-        FROM agendamentos 
-        WHERE data = ?
-      `,
-      args: [hoje],
-    });
-    const hojeCount = hojeRes.rows?.[0]?.total ?? 0;
-
-    // Total da semana
-    const semanaRes = await db.execute({
-      sql: `
-        SELECT COUNT(*) AS total
-        FROM agendamentos
-        WHERE data BETWEEN ? AND ?
-      `,
-      args: [inicioSemana, fimSemana],
-    });
-    const semanaCount = semanaRes.rows?.[0]?.total ?? 0;
-
-    // Próximo agendamento
-    const proximoRes = await db.execute({
-      sql: `
-        SELECT * FROM agendamentos
-        WHERE data >= ?
-        ORDER BY data ASC, horario ASC
-        LIMIT 1
-      `,
+      sql: `SELECT * FROM agendamentos WHERE data >= ? ORDER BY data ASC, horario ASC LIMIT 1`,
       args: [hoje],
     });
     const proximo = proximoRes.rows?.[0] ?? null;
@@ -178,15 +109,12 @@ router.get("/stats", async (req, res) => {
 });
 
 // -----------------------
-// Rota para buscar todas as datas com agendamentos
+// Buscar todas as datas com agendamentos
 // -----------------------
 router.get("/dates-with-bookings", async (req, res) => {
   try {
     const result = await db.execute({
-      sql: `
-        SELECT DISTINCT data FROM agendamentos 
-        ORDER BY data ASC
-      `,
+      sql: `SELECT DISTINCT data FROM agendamentos ORDER BY data ASC`,
     });
 
     const dates = result.rows ? result.rows.map(row => row.data) : [];

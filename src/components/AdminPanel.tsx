@@ -24,18 +24,14 @@ const serviceNames: Record<string, string> = {
   'sobrancelha': 'Sobrancelha',
 };
 
-// 🚨 CORREÇÃO: Variável de ambiente com fallback para garantir que a URL não seja 'undefined'
-const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-
 const AdminPanel = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
 
-  // 🚨 CORREÇÃO: Função para buscar agendamentos de um DIA ESPECÍFICO
-  const fetchAppointments = async (date: Date) => {
+  // Função para buscar todos os agendamentos do backend
+  const fetchAppointments = async () => {
     try {
-      const formattedDate = format(date, "yyyy-MM-dd");
-      const res = await fetch(`${apiUrl}/bookings/data/${formattedDate}`);
+      const res = await fetch("http://localhost:5000/api/bookings");
       const data = await res.json();
       setAppointments(data);
     } catch (err) {
@@ -43,29 +39,30 @@ const AdminPanel = () => {
     }
   };
 
-  // Buscar agendamentos ao montar e sempre que a data selecionada mudar
+  // Buscar agendamentos ao montar
   useEffect(() => {
-    fetchAppointments(selectedDate);
-  }, [selectedDate]); // Adicionado selectedDate como dependência para recarregar quando a data muda
+    fetchAppointments();
+  }, []);
 
   // WebSocket: sempre que houver novo agendamento, refetch
-  useEffect(() => {
-    const handleNovoAgendamento = async () => {
-      await fetchAppointments(selectedDate); // 🔄 refaz a busca apenas para a data selecionada
-    };
+useEffect(() => {
+  const handleNovoAgendamento = async () => {
+    await fetchAppointments(); // 🔄 traz a lista completa do back
+  };
 
-    socket.off("novo-agendamento");
-    socket.on("novo-agendamento", handleNovoAgendamento);
+  // evita múltiplos handlers duplicados ao re-montar
+  socket.off("novo-agendamento");
+  socket.on("novo-agendamento", handleNovoAgendamento);
 
-    // 🔁 fallback: permite que o modal dispare um refresh local
-    const refreshHandler = () => fetchAppointments(selectedDate);
-    window.addEventListener("appointments:refresh", refreshHandler);
+  // 🔁 fallback: permite que o modal dispare um refresh local
+  const refreshHandler = () => fetchAppointments();
+  window.addEventListener("appointments:refresh", refreshHandler);
 
-    return () => {
-      socket.off("novo-agendamento", handleNovoAgendamento);
-      window.removeEventListener("appointments:refresh", refreshHandler);
-    };
-  }, [selectedDate]);
+  return () => {
+    socket.off("novo-agendamento", handleNovoAgendamento);
+    window.removeEventListener("appointments:refresh", refreshHandler);
+  };
+}, []);
 
   // Próximo corte baseado em data e horário atual
   const currentTime = new Date().getTime();
