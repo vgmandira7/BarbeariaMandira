@@ -19,8 +19,9 @@ import {
 import { Plus } from "lucide-react";
 import TimeSlotSelection from "./TimeSlotSelection";
 
-// 🚨 CORREÇÃO: Variável de ambiente para a URL da API
-const apiUrl = import.meta.env.VITE_API_URL;
+// ✅ AJUSTE FINAL: Usamos VITE_API_BASE (o domínio público) e adicionamos /api nas chamadas.
+const apiBaseUrl = import.meta.env.VITE_API_BASE || 'http://localhost:8081';
+
 
 const NovoAgendamento = () => {
   const [open, setOpen] = useState(false);
@@ -50,8 +51,8 @@ const NovoAgendamento = () => {
     };
 
     try {
-      // 🚨 CORREÇÃO: Usando a variável de ambiente para a URL
-      const res = await fetch(`${apiUrl}/bookings`, {
+      // ✅ CORREÇÃO: Usando a variável de ambiente com o prefixo /api
+      const res = await fetch(`${apiBaseUrl}/api/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(bookingData),
@@ -59,11 +60,10 @@ const NovoAgendamento = () => {
 
       if (!res.ok) {
         const error = await res.json();
+        // Nota: Removendo o 'backend já emite pelo socket' já que não estamos mais usando socket.
         alert(error.error || "Erro ao criar agendamento");
         return;
       }
-
-      await res.json(); // backend já emite pelo socket
 
       // resetar formulário e fechar modal
       resetar();

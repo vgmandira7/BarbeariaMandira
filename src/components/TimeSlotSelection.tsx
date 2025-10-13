@@ -5,7 +5,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Clock, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import socket from '../socket';
+// ❌ Socket.IO removido, pois não é mais usado
 
 interface TimeSlot {
   time: string;
@@ -24,8 +24,9 @@ interface TimeSlotSelectionProps {
   showGoogleCalendarButton?: boolean;
 }
 
-// 🚨 CORREÇÃO: Variável de ambiente com fallback para garantir que a URL não seja 'undefined'
-const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// ✅ AJUSTE FINAL: Usamos VITE_API_BASE (o domínio público) e adicionamos /api nas chamadas.
+// O fallback para desenvolvimento é 'http://localhost:8081' (porta comum para Node/Express).
+const apiBaseUrl = import.meta.env.VITE_API_BASE || 'http://localhost:8081';
 
 
 const timeSlots: TimeSlot[] = [
@@ -69,24 +70,34 @@ const TimeSlotSelection = ({
   const [loading, setLoading] = useState(false);
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
 
+  // Carrega os agendamentos sempre que a data selecionada muda
+  useEffect(() => {
+    if (selectedDate) {
+      fetchBookings(selectedDate);
+    }
+  }, [selectedDate]); // Depende apenas da data selecionada
+
   const fetchBookings = async (date: Date) => {
     try {
       const formattedDate = format(date, 'yyyy-MM-dd');
-      // 🚨 CORREÇÃO: Uso da variável apiUrl
-      const res = await fetch(`${apiUrl}/bookings/data/${formattedDate}`);
+      // ✅ Requisição GET: Usando apiBaseUrl + /api/bookings/...
+      const res = await fetch(`${apiBaseUrl}/api/bookings/data/${formattedDate}`);
       if (!res.ok) {
         throw new Error("Failed to fetch bookings");
       }
       const dayBookings = await res.json();
       setBookedTimes(dayBookings.map((b: any) => b.horario));
     } catch (err) {
+      // Este erro ocorrerá se o backend não estiver acessível, mas o frontend não travará
       console.error("Erro ao buscar agendamentos", err);
+      // Opcional: alertar o usuário ou setar bookedTimes como vazio.
+      // setBookedTimes([]); 
     }
   };
 
   const handleDateSelect = async (date: Date) => {
     onDateSelect(date);
-    await fetchBookings(date);
+    // Não é necessário chamar fetchBookings aqui, o useEffect fará isso
     onTimeSelect(null);
   };
 
@@ -103,8 +114,8 @@ const TimeSlotSelection = ({
 
     try {
       setLoading(true);
-      // 🚨 CORREÇÃO: Uso da variável apiUrl
-      const res = await fetch(`${apiUrl}/bookings`, {
+      // ✅ Requisição POST: Usando apiBaseUrl + /api/bookings
+      const res = await fetch(`${apiBaseUrl}/api/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(bookingData)
@@ -117,6 +128,9 @@ const TimeSlotSelection = ({
         return;
       }
 
+      // Após salvar, atualiza a lista de horários agendados (força um re-fetch)
+      await fetchBookings(selectedDate);
+      
       setShowConfirmation(true);
       setLoading(false);
     } catch (err) {
@@ -150,17 +164,8 @@ const TimeSlotSelection = ({
     window.open(googleCalendarUrl, "_blank");
   };
 
-  useEffect(() => {
-    socket.on("novo-agendamento", (data: any) => {
-      if (selectedDate && data.data === format(selectedDate, 'yyyy-MM-dd')) {
-        setBookedTimes((prev) => [...prev, data.horario]);
-      }
-    });
-
-    return () => {
-      socket.off("novo-agendamento");
-    };
-  }, [selectedDate]);
+  // ❌ Lógica do Socket.IO removida
+  // useEffect(() => { ... }, [selectedDate]);
 
   if (showConfirmation) {
     return (
