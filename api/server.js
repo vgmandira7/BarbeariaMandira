@@ -8,7 +8,7 @@ import serverless from "serverless-http";
 // Garantimos que a tabela seja criada no início (apenas uma vez)
 await criarTabelaAgendamentos(); 
 // --------------------
-
+const express = require('express');
 const app = express();
 
 app.use(cors()); // CORS está correto, permitindo a comunicação
@@ -34,6 +34,6 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
 }
 
 // Exporta o handler para o Vercel/Serverless
-export default app; 
+module.exports = app;
 export const handler = serverless(app);
 
