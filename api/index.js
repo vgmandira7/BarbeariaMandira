@@ -1,4 +1,5 @@
 // api/index.js: Ponto de entrada para a Serverless Function no Vercel
+const express = require('express'); // <-- ADICIONE ESTA LINHA
 const cors = require('cors');
 // Importa o router de agendamentos (agora usando CJS: require)
 const bookingRoutes = require('./routes/bookings');
