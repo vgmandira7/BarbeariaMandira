@@ -25,7 +25,8 @@ interface TimeSlotSelectionProps {
 }
 
 // 🚨 CORREÇÃO: Variável de ambiente com fallback para garantir que a URL não seja 'undefined'
-const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8081/api";
+const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 
 const timeSlots: TimeSlot[] = [
   { time: '07:00', available: true },
