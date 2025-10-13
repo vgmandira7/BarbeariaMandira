@@ -6,7 +6,7 @@ import { Users, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import NovoAgendamento from './newSchedule';
-import socket from '../socket'; // import do socket
+// REMOVENDO SOCKET: Socket.IO é incompatível com Serverless Functions (Vercel).
 
 interface Appointment {
   id: string;
@@ -28,12 +28,26 @@ const AdminPanel = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
 
+  // 🚨 CORREÇÃO: Usando caminho relativo '/api/bookings' para funcionar em
+  // desenvolvimento (localhost:8080/api/bookings - configurado via proxy ou fallback)
+  // e em produção no Vercel (mydomain.com/api/bookings).
+  const apiUrlPath = "/api/bookings/all"; 
+
   // Função para buscar todos os agendamentos do backend
   const fetchAppointments = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/bookings");
+      // Usando o caminho relativo, que funciona tanto localmente (se configurado) quanto no Vercel
+      const res = await fetch(apiUrlPath); 
+      
+      if (!res.ok) {
+        // Logar o erro, mas não travar a aplicação
+        console.error(`Falha ao buscar agendamentos. Status: ${res.status}`);
+        return;
+      }
+      
       const data = await res.json();
-      setAppointments(data);
+      // O ID já vem como string do back-end (bookings.js), então está seguro
+      setAppointments(data); 
     } catch (err) {
       console.error("Erro ao buscar agendamentos", err);
     }
@@ -44,30 +58,24 @@ const AdminPanel = () => {
     fetchAppointments();
   }, []);
 
-  // WebSocket: sempre que houver novo agendamento, refetch
-useEffect(() => {
-  const handleNovoAgendamento = async () => {
-    await fetchAppointments(); // 🔄 traz a lista completa do back
-  };
+  // ⚠️ Remoção do bloco useEffect do socket.IO.
+  // Em Serverless, dependemos de um refetch manual ou de chamadas HTTP.
+  useEffect(() => {
+    // 🔁 O fallback de refresh local é o que usaremos agora
+    const refreshHandler = () => fetchAppointments();
+    window.addEventListener("appointments:refresh", refreshHandler);
 
-  // evita múltiplos handlers duplicados ao re-montar
-  socket.off("novo-agendamento");
-  socket.on("novo-agendamento", handleNovoAgendamento);
+    return () => {
+      window.removeEventListener("appointments:refresh", refreshHandler);
+    };
+  }, []);
 
-  // 🔁 fallback: permite que o modal dispare um refresh local
-  const refreshHandler = () => fetchAppointments();
-  window.addEventListener("appointments:refresh", refreshHandler);
-
-  return () => {
-    socket.off("novo-agendamento", handleNovoAgendamento);
-    window.removeEventListener("appointments:refresh", refreshHandler);
-  };
-}, []);
 
   // Próximo corte baseado em data e horário atual
   const currentTime = new Date().getTime();
   const upcomingAppointments = appointments
     .map((apt) => {
+      // Garante que o horário seja tratado como fuso zero (UTC) ou local
       const aptDateTime = new Date(`${apt.data}T${apt.horario}:00`);
       return { ...apt, dateTime: aptDateTime };
     })
@@ -170,7 +178,7 @@ useEffect(() => {
               <CalendarIcon className="h-5 w-5 text-success" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Esta Semana</p>
+              <p className="text-sm text-muted-foreground">Total de Agendamentos (Exemplo)</p>
               <p className="text-xl font-bold">{appointments.length}</p>
             </div>
           </div>
