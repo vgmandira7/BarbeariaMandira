@@ -5,6 +5,10 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  // Adicione a propriedade `base` aqui.
+  // Isso garante que os caminhos dos seus arquivos de build (assets)
+  // sejam absolutos, começando da raiz do seu domínio.
+  base: "/", 
   server: {
     host: "::",
     port: 8080,
