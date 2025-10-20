@@ -26,7 +26,7 @@ interface TimeSlotSelectionProps {
 
 // ✅ AJUSTE FINAL: Usamos VITE_API_BASE (o domínio público) e adicionamos /api nas chamadas.
 // O fallback para desenvolvimento é 'http://localhost:8081' (porta comum para Node/Express).
-const apiBaseUrl = import.meta.env.VITE_API_BASE || 'http://localhost:8081';
+const apiBaseUrl = import.meta.env.VITE_API_BASE || 'https://barbearia-mandira.vercel.app/api/bookings';
 
 
 const timeSlots: TimeSlot[] = [
@@ -81,7 +81,7 @@ const TimeSlotSelection = ({
     try {
       const formattedDate = format(date, 'yyyy-MM-dd');
       // ✅ Requisição GET: Usando apiBaseUrl + /api/bookings/...
-      const res = await fetch(`${apiBaseUrl}/api/bookings/data/${formattedDate}`);
+      const res = await fetch(`${apiBaseUrl}/data/${formattedDate}`);
       if (!res.ok) {
         throw new Error("Failed to fetch bookings");
       }
@@ -115,7 +115,7 @@ const TimeSlotSelection = ({
     try {
       setLoading(true);
       // ✅ Requisição POST: Usando apiBaseUrl + /api/bookings
-      const res = await fetch(`${apiBaseUrl}/api/bookings`, {
+      const res = await fetch(`${apiBaseUrl}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(bookingData)

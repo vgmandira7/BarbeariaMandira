@@ -17,7 +17,7 @@ app.use(express.json());
 conectarMongoDB();
 
 // Rotas
-app.use("/bookings", bookingRoutes);
+//app.use("/bookings", bookingRoutes);
 app.use("/agendamentos", bookingRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/agendamentos", bookingRoutes);
