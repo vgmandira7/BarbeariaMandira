@@ -1,11 +1,22 @@
-// api/database.js: Conversão para CJS (CommonJS)
-const { createClient } = require("@libsql/client");
+// api/database.js
+const mongoose = require("mongoose");
 
-// Conexão com o Turso
-const db = createClient({
-  // As variáveis de ambiente serão lidas do Vercel
-  url: process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN
-});
+let isConnected = false;
 
-module.exports = db;
+async function conectarMongoDB() {
+  if (isConnected) return; // evita múltiplas conexões no ambiente serverless
+
+  try {
+    const mongoURI = process.env.MONGODB_URI;
+    await mongoose.connect(mongoURI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    isConnected = true;
+    console.log("✅ Conectado ao MongoDB Atlas com sucesso!");
+  } catch (error) {
+    console.error("❌ Erro ao conectar ao MongoDB:", error);
+  }
+}
+
+module.exports = { conectarMongoDB };

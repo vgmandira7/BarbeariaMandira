@@ -1,18 +1,17 @@
-// createBanco.js
-import db from "./database.js";
+// api/createBanco.js
+const mongoose = require("mongoose");
 
-// cria a tabela no Turso se não existir
-export async function criarTabelaAgendamentos() {
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS agendamentos (
-      codAgendamento INTEGER PRIMARY KEY AUTOINCREMENT,
-      nome TEXT NOT NULL,
-      telefone TEXT NOT NULL,
-      servico TEXT NOT NULL,
-      data TEXT NOT NULL,     -- YYYY-MM-DD
-      horario TEXT NOT NULL,  -- HH:mm
-      created_at TEXT DEFAULT (datetime('now')),
-      UNIQUE (data, horario)  -- impede dois clientes no mesmo horário
-    )
-  `);
-}
+const agendamentoSchema = new mongoose.Schema({
+  nome: { type: String, required: true },
+  telefone: { type: String, required: true },
+  servico: { type: String, required: true },
+  data: { type: String, required: true },
+  horario: { type: String, required: true },
+  created_at: { type: Date, default: Date.now },
+});
+
+agendamentoSchema.index({ data: 1, horario: 1 }, { unique: true });
+
+const Agendamento = mongoose.model("Agendamento", agendamentoSchema);
+
+module.exports = Agendamento;
