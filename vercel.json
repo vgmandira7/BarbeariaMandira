@@ -1,19 +1,18 @@
 {
   "rewrites": [
-    // 1. Esta é a sua regra da API (mantém o backend funcionando)
+    
     {
       "source": "/api/(.*)",
       "destination": "/api"
     },
-    // 2. Esta é a nova regra do React (corrige o 404)
-    // Ela pega TUDO que NÃO é /api e manda pro index.html
+    
     {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],
   "headers": [
-    // Suas regras de CORS (iguais às que você já tinha)
+    
     {
       "source": "/api/(.*)",
       "headers": [
