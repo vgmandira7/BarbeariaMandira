@@ -126,7 +126,6 @@ const NovoAgendamento = () => {
                     <SelectItem value="cabelo">Cabelo</SelectItem>
                     <SelectItem value="cabelo + barba">Cabelo + Barba</SelectItem>
                     <SelectItem value="barba">Barba</SelectItem>
-                    <SelectItem value="sobrancelha">Sobrancelha</SelectItem>
                 </SelectContent>
               </Select>
             </div>
