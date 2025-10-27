@@ -191,17 +191,23 @@ const TimeSlotSelection = ({
           <h3 className="font-semibold mb-4 flex items-center">
             <Clock className="h-4 w-4 mr-2" /> Selecione uma Data
           </h3>
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={(date) => date && handleDateSelect(date)}
-            disabled={(date) => {
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              return date < today || date.getDay() === 0;
-            }}
-            className="rounded-md"
-          />
+      <Calendar
+        mode="single"
+        selected={selectedDate}
+        onSelect={(date) => date && handleDateSelect(date)}
+        locale={ptBR} // ✅ Adiciona a localização PT-BR
+        disabled={(date) => {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const maxDate = new Date(today);
+          maxDate.setDate(today.getDate() + 7); // ✅ Limite de 7 dias
+
+          return date < today || date > maxDate || date.getDay() === 0;
+        }}
+        className="rounded-md"
+      />
+
         </Card>
 
         <Card className="p-4">
