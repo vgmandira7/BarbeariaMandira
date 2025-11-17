@@ -6,10 +6,9 @@ import { Users, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import NovoAgendamento from './newSchedule';
-// REMOVENDO SOCKET: Socket.IO é incompatível com Serverless Functions (Vercel).
 
 interface Appointment {
-  id: string;
+  _id: string;
   nome: string;
   telefone: string;
   servico: string;
@@ -28,54 +27,55 @@ const AdminPanel = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
 
-  // 🚨 CORREÇÃO: Usando caminho relativo '/api/bookings' para funcionar em
-  // desenvolvimento (localhost:8080/api/bookings - configurado via proxy ou fallback)
-  // e em produção no Vercel (mydomain.com/api/bookings).
-  const apiUrlPath = "/api/bookings/all"; 
-
-  // Função para buscar todos os agendamentos do backend
   const fetchAppointments = async () => {
     try {
-      // Usando o caminho relativo, que funciona tanto localmente (se configurado) quanto no Vercel
-      const res = await fetch(apiUrlPath); 
-      
-      if (!res.ok) {
-        // Logar o erro, mas não travar a aplicação
-        console.error(`Falha ao buscar agendamentos. Status: ${res.status}`);
-        return;
-      }
-      
+      const res = await fetch("/api/bookings/all");
+      if (!res.ok) return;
       const data = await res.json();
-      // O ID já vem como string do back-end (bookings.js), então está seguro
-      setAppointments(data); 
+      setAppointments(data);
     } catch (err) {
       console.error("Erro ao buscar agendamentos", err);
     }
   };
 
-  // Buscar agendamentos ao montar
   useEffect(() => {
     fetchAppointments();
   }, []);
 
-  // ⚠️ Remoção do bloco useEffect do socket.IO.
-  // Em Serverless, dependemos de um refetch manual ou de chamadas HTTP.
   useEffect(() => {
-    // 🔁 O fallback de refresh local é o que usaremos agora
     const refreshHandler = () => fetchAppointments();
     window.addEventListener("appointments:refresh", refreshHandler);
-
-    return () => {
-      window.removeEventListener("appointments:refresh", refreshHandler);
-    };
+    return () => window.removeEventListener("appointments:refresh", refreshHandler);
   }, []);
 
+  // ---------------------
+  // 🆕 Função de excluir
+  // ---------------------
+  const handleDelete = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este agendamento?")) return;
 
-  // Próximo corte baseado em data e horário atual
+    try {
+      const res = await fetch(`/api/bookings/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        alert("Erro ao excluir agendamento");
+        return;
+      }
+
+      setAppointments(prev => prev.filter(apt => apt._id !== id));
+      fetchAppointments(); // atualiza a lista
+
+    } catch (err) {
+      console.error("Erro ao excluir:", err);
+      alert("Erro ao conectar com servidor");
+    }
+  };
+
   const currentTime = new Date().getTime();
   const upcomingAppointments = appointments
     .map((apt) => {
-      // Garante que o horário seja tratado como fuso zero (UTC) ou local
       const aptDateTime = new Date(`${apt.data}T${apt.horario}:00`);
       return { ...apt, dateTime: aptDateTime };
     })
@@ -88,7 +88,7 @@ const AdminPanel = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-8">
-      {/* Cabeçalho e Botão Novo Agendamento */}
+
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Painel do Barbeiro</h1>
@@ -98,7 +98,6 @@ const AdminPanel = () => {
         <NovoAgendamento />
       </div>
 
-      {/* Calendário e Agendamentos do Dia */}
       <div className="grid lg:grid-cols-3 gap-6">
         <Card className="p-6 shadow-md">
           <h3 className="font-semibold mb-4 flex items-center text-lg">
@@ -127,7 +126,7 @@ const AdminPanel = () => {
               {dayAppointments
                 .sort((a, b) => a.horario.localeCompare(b.horario))
                 .map((apt) => (
-                  <Card key={apt.id} className="p-4 bg-accent shadow-sm hover:shadow-md transition-shadow">
+                  <Card key={apt._id} className="p-4 bg-accent shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
                         <div className="flex items-center space-x-2">
@@ -137,12 +136,20 @@ const AdminPanel = () => {
                         <div>
                           <p className="font-medium">{apt.nome}</p>
                           <p className="text-sm text-muted-foreground">{apt.telefone}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {serviceNames[apt.servico] || apt.servico}
-                          </p>
+                          <p className="text-sm text-muted-foreground">{serviceNames[apt.servico] || apt.servico}</p>
                         </div>
                       </div>
-                      <Badge variant="outline">{serviceNames[apt.servico] || apt.servico}</Badge>
+
+                      <div className="flex items-center space-x-3">
+                        <Badge variant="outline">{serviceNames[apt.servico] || apt.servico}</Badge>
+
+                        <button
+                          onClick={() => handleDelete(apt._id)}
+                          className="text-red-500 text-sm hover:underline"
+                        >
+                          Excluir
+                        </button>
+                      </div>
                     </div>
                   </Card>
                 ))}
@@ -156,7 +163,6 @@ const AdminPanel = () => {
         </Card>
       </div>
 
-      {/* Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-6 shadow-md">
           <div className="flex items-center space-x-3">
@@ -178,7 +184,7 @@ const AdminPanel = () => {
               <CalendarIcon className="h-5 w-5 text-success" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total de Agendamentos (Exemplo)</p>
+              <p className="text-sm text-muted-foreground">Total de Agendamentos</p>
               <p className="text-xl font-bold">{appointments.length}</p>
             </div>
           </div>
