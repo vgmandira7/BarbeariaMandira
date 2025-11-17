@@ -83,4 +83,25 @@ router.get("/stats", async (req, res) => {
   }
 });
 
+// -----------------------
+// Deletar agendamento por ID
+// -----------------------
+router.delete("/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const deletado = await Agendamento.findByIdAndDelete(id);
+
+    if (!deletado) {
+      return res.status(404).json({ error: "Agendamento não encontrado" });
+    }
+
+    res.json({ message: "Agendamento removido com sucesso" });
+  } catch (err) {
+    console.error("Erro ao deletar agendamento:", err);
+    res.status(500).json({ error: "Erro interno ao deletar agendamento" });
+  }
+});
+
+
 module.exports = router;
