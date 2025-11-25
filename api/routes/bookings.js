@@ -1,3 +1,11 @@
+// api/routes/bookings.js
+const express = require("express");
+const { format, startOfWeek, endOfWeek } = require("date-fns");
+const Agendamento = require("../CreateBanco");
+
+const router = express.Router();
+
+// ------------ Função para calcular horários ocupados ------------
 function calcularHorariosOcupados(horario, servico, duracaoManual) {
 
   // SE EXISTE DURAÇÃO MANUAL → usa ela
@@ -40,3 +48,130 @@ function calcularHorariosOcupados(horario, servico, duracaoManual) {
 
   return ocupados;
 }
+
+
+// -----------------------
+// Criar agendamento
+// -----------------------
+router.post("/", async (req, res) => {
+  const { nome, telefone, servico, data, horario, duracao } = req.body;
+
+  try {
+    // Calcula horários ocupados:
+    // ✔ se duracao (painel do barbeiro) -> usa duração manual
+    // ✔ senão -> usa duração padrão do serviço
+    const horariosOcupados = calcularHorariosOcupados(
+      horario,
+      servico,
+      duracao ? Number(duracao) : null
+    );
+
+    // Verificar conflito
+    const conflito = await Agendamento.findOne({
+      data,
+      horario: { $in: horariosOcupados },
+    });
+
+    if (conflito) {
+      return res.status(400).json({
+        error: `Esse horário conflita com outro agendamento às ${conflito.horario}.`,
+      });
+    }
+
+    // Criar agendamento
+    const novo = new Agendamento({
+      nome,
+      telefone,
+      servico,
+      data,
+      horario,
+      duracao: duracao ? Number(duracao) : undefined,
+    });
+
+    await novo.save();
+
+    res.status(201).json(novo);
+
+  } catch (err) {
+    console.error("Erro ao criar agendamento:", err);
+
+    if (err.code === 11000) {
+      return res.status(400).json({ error: "Horário já reservado" });
+    }
+
+    res.status(500).json({ error: "Erro interno ao criar agendamento" });
+  }
+});
+
+// -----------------------
+// Buscar TODOS
+// -----------------------
+router.get("/all", async (req, res) => {
+  try {
+    const agendamentos = await Agendamento.find().sort({ data: 1, horario: 1 });
+    res.json(agendamentos);
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao buscar agendamentos" });
+  }
+});
+
+// -----------------------
+// Buscar por data
+// -----------------------
+router.get("/data/:data", async (req, res) => {
+  const { data } = req.params;
+
+  try {
+    const agendamentos = await Agendamento.find({ data }).sort({ horario: 1 });
+    res.json(agendamentos);
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao buscar agendamentos" });
+  }
+});
+
+// -----------------------
+// Estatísticas
+// -----------------------
+router.get("/stats", async (req, res) => {
+  try {
+    const hoje = format(new Date(), "yyyy-MM-dd");
+    const inicioSemana = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+    const fimSemana = format(endOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+
+    const hojeCount = await Agendamento.countDocuments({ data: hoje });
+    const semanaCount = await Agendamento.countDocuments({
+      data: { $gte: inicioSemana, $lte: fimSemana },
+    });
+
+    const proximo = await Agendamento.findOne({ data: { $gte: hoje } })
+      .sort({ data: 1, horario: 1 })
+      .exec();
+
+    res.json({ hoje: hojeCount, semana: semanaCount, proximo });
+
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao buscar estatísticas" });
+  }
+});
+
+// -----------------------
+// Deletar agendamento
+// -----------------------
+router.delete("/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const deletado = await Agendamento.findByIdAndDelete(id);
+
+    if (!deletado) {
+      return res.status(404).json({ error: "Agendamento não encontrado" });
+    }
+
+    res.json({ message: "Agendamento removido" });
+
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao deletar agendamento" });
+  }
+});
+
+module.exports = router;
