@@ -13,7 +13,6 @@ const serviceDurations: Record<string, number> = {
   "cabelo": 60,
   "cabelo + barba": 60,
   "barba": 30,
-  "sobrancelha": 30,
 };
 
 interface TimeSlot {
