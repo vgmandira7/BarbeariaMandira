@@ -5,6 +5,35 @@ const Agendamento = require("../CreateBanco");
 
 const router = express.Router();
 
+// ------------ Função para calcular horários ocupados pelo serviço ------------
+function calcularHorariosOcupados(horario, servico) {
+  const duracoes = {
+    "cabelo": 60,
+    "hair": 60,
+    "cabelo + barba": 60,
+    "hair-beard": 60,
+    "barba": 30,
+    "beard": 30,
+    "sobrancelha": 30,
+    "eyebrow": 30,
+  };
+
+  const duracao = duracoes[servico.toLowerCase()] || 60;
+  const slots = duracao === 60 ? 2 : 1;
+
+  const [h, m] = horario.split(":").map(Number);
+  const ocupados = [];
+
+  for (let i = 0; i < slots; i++) {
+    const totalMin = h * 60 + m + i * 30;
+    const hh = String(Math.floor(totalMin / 60)).padStart(2, "0");
+    const mm = String(totalMin % 60).padStart(2, "0");
+    ocupados.push(`${hh}:${mm}`);
+  }
+
+  return ocupados;
+}
+
 // -----------------------
 // Criar agendamento
 // -----------------------
@@ -12,8 +41,25 @@ router.post("/", async (req, res) => {
   const { nome, telefone, servico, data, horario } = req.body;
 
   try {
+    // Calcula todos os horários afetados
+    const horariosOcupados = calcularHorariosOcupados(horario, servico);
+
+    // Verifica conflito com qualquer horário ocupado
+    const conflito = await Agendamento.findOne({
+      data,
+      horario: { $in: horariosOcupados },
+    });
+
+    if (conflito) {
+      return res.status(400).json({
+        error: `Esse horário conflita com outro agendamento às ${conflito.horario}.`,
+      });
+    }
+
+    // Cria o agendamento
     const novo = new Agendamento({ nome, telefone, servico, data, horario });
     await novo.save();
+
     res.status(201).json(novo);
   } catch (err) {
     console.error("Erro ao criar agendamento:", err);
@@ -27,20 +73,20 @@ router.post("/", async (req, res) => {
 });
 
 // -----------------------
-// Buscar TODOS os agendamentos (Painel Admin)
+// Buscar TODOS
 // -----------------------
 router.get("/all", async (req, res) => {
   try {
     const agendamentos = await Agendamento.find().sort({ data: 1, horario: 1 });
     res.json(agendamentos);
   } catch (err) {
-    console.error("Erro ao buscar todos os agendamentos:", err);
-    res.status(500).json({ error: "Erro ao buscar todos os agendamentos" });
+    console.error("Erro:", err);
+    res.status(500).json({ error: "Erro ao buscar agendamentos" });
   }
 });
 
 // -----------------------
-// Buscar agendamentos por data
+// Buscar por data
 // -----------------------
 router.get("/data/:data", async (req, res) => {
   const { data } = req.params;
@@ -49,13 +95,13 @@ router.get("/data/:data", async (req, res) => {
     const agendamentos = await Agendamento.find({ data }).sort({ horario: 1 });
     res.json(agendamentos);
   } catch (err) {
-    console.error("Erro ao buscar agendamentos da data:", err);
-    res.status(500).json({ error: "Erro ao buscar agendamentos da data" });
+    console.error("Erro:", err);
+    res.status(500).json({ error: "Erro ao buscar agendamentos" });
   }
 });
 
 // -----------------------
-// Estatísticas para painel
+// Estatísticas
 // -----------------------
 router.get("/stats", async (req, res) => {
   try {
@@ -72,19 +118,15 @@ router.get("/stats", async (req, res) => {
       .sort({ data: 1, horario: 1 })
       .exec();
 
-    res.json({
-      hoje: hojeCount,
-      semana: semanaCount,
-      proximo,
-    });
+    res.json({ hoje: hojeCount, semana: semanaCount, proximo });
   } catch (err) {
-    console.error("Erro ao buscar estatísticas:", err);
+    console.error("Erro:", err);
     res.status(500).json({ error: "Erro ao buscar estatísticas" });
   }
 });
 
 // -----------------------
-// Deletar agendamento por ID
+// Deletar agendamento
 // -----------------------
 router.delete("/:id", async (req, res) => {
   const { id } = req.params;
@@ -96,12 +138,11 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ error: "Agendamento não encontrado" });
     }
 
-    res.json({ message: "Agendamento removido com sucesso" });
+    res.json({ message: "Agendamento removido" });
   } catch (err) {
-    console.error("Erro ao deletar agendamento:", err);
-    res.status(500).json({ error: "Erro interno ao deletar agendamento" });
+    console.error("Erro:", err);
+    res.status(500).json({ error: "Erro ao deletar agendamento" });
   }
 });
-
 
 module.exports = router;
