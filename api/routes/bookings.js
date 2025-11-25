@@ -7,16 +7,30 @@ const router = express.Router();
 
 // ------------ Função para calcular horários ocupados ------------
 function calcularHorariosOcupados(horario, servico, duracaoManual) {
-  // Se o admin informou uma duração manual → usa ela
-  const duracao = duracaoManual || (
-    servico.toLowerCase().includes("barba") ||
-    servico.toLowerCase().includes("sobrancelha")
-      ? 30
-      : 60
-  );
+
+  // ----- 1) Se tem duração manual (admin), usa ela -----
+  if (duracaoManual !== undefined && duracaoManual !== null) {
+    const slots = duracaoManual >= 60 ? 2 : 1;
+    return gerarSlots(horario, slots);
+  }
+
+  // ----- 2) Duração padrão dos serviços -----
+  const duracoes = {
+    "cabelo": 60,
+    "cabelo + barba": 60,
+    "barba": 30,
+    "sobrancelha": 30,
+  };
+
+  const servicoLower = servico.toLowerCase();
+  const duracao = duracoes[servicoLower] ?? 60;
 
   const slots = duracao >= 60 ? 2 : 1;
 
+  return gerarSlots(horario, slots);
+}
+
+function gerarSlots(horario, slots) {
   const [h, m] = horario.split(":").map(Number);
   const ocupados = [];
 
@@ -29,6 +43,7 @@ function calcularHorariosOcupados(horario, servico, duracaoManual) {
 
   return ocupados;
 }
+
 
 // -----------------------
 // Criar agendamento
