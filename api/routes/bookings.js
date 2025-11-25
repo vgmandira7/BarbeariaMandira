@@ -6,23 +6,16 @@ const Agendamento = require("../CreateBanco");
 const router = express.Router();
 
 // ------------ Função para calcular horários ocupados ------------
-function calcularHorariosOcupados(horario, servico, duracaoManual = null) {
-  // Durações padrão (cliente)
-  const duracoesPadrao = {
-    "cabelo": 60,
-    "hair": 60,
-    "cabelo + barba": 60,
-    "hair-beard": 60,
-    "barba": 30,
-    "beard": 30,
-    "sobrancelha": 30,
-    "eyebrow": 30,
-  };
+function calcularHorariosOcupados(horario, servico, duracaoManual) {
+  // Se o admin informou uma duração manual → usa ela
+  const duracao = duracaoManual || (
+    servico.toLowerCase().includes("barba") ||
+    servico.toLowerCase().includes("sobrancelha")
+      ? 30
+      : 60
+  );
 
-  // Se o barbeiro enviar duração manual → usar ela
-  const duracao = duracaoManual || duracoesPadrao[servico.toLowerCase()] || 60;
-
-  const slots = duracao === 60 ? 2 : 1;
+  const slots = duracao >= 60 ? 2 : 1;
 
   const [h, m] = horario.split(":").map(Number);
   const ocupados = [];
