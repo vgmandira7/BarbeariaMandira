@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 // ---------------------
-// TABELA DE DURAÇÕES
+// TABELA DE DURAÇÕES (CLIENTE)
 // ---------------------
 const serviceDurations: Record<string, number> = {
   "cabelo": 60,
@@ -32,45 +32,47 @@ interface TimeSlotSelectionProps {
   userPhone: string;
   showGoogleCalendarButton?: boolean;
 
-  /** NOVO → duração manual, usada apenas pelo painel admin */
+  // 🔥 NOVO: duração manual (painel do barbeiro)
   manualDuration?: number;
 }
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE || 'https://barbearia-mandira.vercel.app/api/bookings';
+// IMPORTANTE: aqui já é a rota completa
+const apiBaseUrl =
+  import.meta.env.VITE_API_BASE || "https://barbearia-mandira.vercel.app/api/bookings";
 
 const timeSlots: TimeSlot[] = [
-  { time: '07:00', available: true },
-  { time: '07:30', available: true },
-  { time: '08:00', available: true },
-  { time: '08:30', available: true },
-  { time: '09:00', available: true },
-  { time: '09:30', available: true },
-  { time: '10:00', available: true },
-  { time: '10:30', available: true },
-  { time: '11:00', available: true },
-  { time: '11:30', available: true },
-  { time: '13:00', available: true },
-  { time: '13:30', available: true },
-  { time: '14:00', available: true },
-  { time: '14:30', available: true },
-  { time: '15:00', available: true },
-  { time: '15:30', available: true },
-  { time: '16:00', available: true },
-  { time: '16:30', available: true },
-  { time: '17:00', available: true },
-  { time: '17:30', available: true },
-  { time: '18:00', available: true },
-  { time: '18:30', available: true },
-  { time: '19:00', available: true },
-  { time: '19:30', available: true },
-  { time: '20:00', available: true },
+  { time: "07:00", available: true },
+  { time: "07:30", available: true },
+  { time: "08:00", available: true },
+  { time: "08:30", available: true },
+  { time: "09:00", available: true },
+  { time: "09:30", available: true },
+  { time: "10:00", available: true },
+  { time: "10:30", available: true },
+  { time: "11:00", available: true },
+  { time: "11:30", available: true },
+  { time: "13:00", available: true },
+  { time: "13:30", available: true },
+  { time: "14:00", available: true },
+  { time: "14:30", available: true },
+  { time: "15:00", available: true },
+  { time: "15:30", available: true },
+  { time: "16:00", available: true },
+  { time: "16:30", available: true },
+  { time: "17:00", available: true },
+  { time: "17:30", available: true },
+  { time: "18:00", available: true },
+  { time: "18:30", available: true },
+  { time: "19:00", available: true },
+  { time: "19:30", available: true },
+  { time: "20:00", available: true },
 ];
 
 const serviceNames: Record<string, string> = {
-  'cabelo': 'Cabelo',
-  'cabelo + barba': 'Cabelo + Barba',
-  'barba': 'Barba',
-  'sobrancelha': 'Sobrancelha'
+  cabelo: "Cabelo",
+  "cabelo + barba": "Cabelo + Barba",
+  barba: "Barba",
+  sobrancelha: "Sobrancelha",
 };
 
 const MARGIN_MINUTES = 15;
@@ -88,18 +90,18 @@ const TimeSlotSelection = ({
   manualDuration,
   showGoogleCalendarButton = true,
 }: TimeSlotSelectionProps) => {
-
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
 
+  // Carrega agendamentos ao mudar a data
   useEffect(() => {
     if (selectedDate) fetchBookings(selectedDate);
   }, [selectedDate]);
 
   const fetchBookings = async (date: Date) => {
     try {
-      const formattedDate = format(date, 'yyyy-MM-dd');
+      const formattedDate = format(date, "yyyy-MM-dd");
       const res = await fetch(`${apiBaseUrl}/data/${formattedDate}`);
       const dayBookings = await res.json();
       setBookedTimes(dayBookings.map((b: any) => b.horario));
@@ -116,23 +118,25 @@ const TimeSlotSelection = ({
   const handleConfirmBooking = async () => {
     if (!selectedDate || !selectedTime || !selectedService) return;
 
-    const bookingData = {
+    const bookingData: any = {
       nome: userName,
       telefone: userPhone,
       servico: selectedService,
-      horario: selectedTime,
       data: selectedDate.toISOString().split("T")[0],
-
-      // ← Envia duração manual se existir
-      duracao: manualDuration ?? undefined
+      horario: selectedTime,
     };
+
+    // 🔥 Se tiver duração manual (admin), manda pro backend
+    if (manualDuration !== undefined && manualDuration !== null) {
+      bookingData.duracao = Number(manualDuration);
+    }
 
     try {
       setLoading(true);
       const res = await fetch(`${apiBaseUrl}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bookingData)
+        body: JSON.stringify(bookingData),
       });
 
       const response = await res.json();
@@ -143,38 +147,40 @@ const TimeSlotSelection = ({
         return;
       }
 
-      fetchBookings(selectedDate);
+      await fetchBookings(selectedDate);
       setShowConfirmation(true);
       setLoading(false);
-
     } catch (err) {
-      alert("Erro ao salvar");
+      console.error(err);
+      alert("Erro ao salvar agendamento");
       setLoading(false);
     }
   };
 
-  // -------------------------------------------------------------------
-  // DURAÇÃO REAL USADA PELO TIME SLOT
-  // -------------------------------------------------------------------
+  // ------------------------------
+  // DURAÇÃO REAL USADA NO CÁLCULO
+  // ------------------------------
+  const duracao =
+    manualDuration !== undefined && manualDuration !== null
+      ? Number(manualDuration)
+      : serviceDurations[selectedService] ?? 60;
 
-  const duracao = manualDuration
-    ? Number(manualDuration)
-    : (serviceDurations[selectedService] ?? 60);
-
-  const slotsUsados = duracao === 60 ? 2 : 1;
+  const slotsUsados = duracao >= 60 ? 2 : 1;
 
   const isSlotBlocked = (time: string, index: number) => {
     const booked = bookedTimes.includes(time);
 
+    // Verifica se o horário anterior está reservado
     const previous = timeSlots[index - 1]?.time;
     const previousIsBooked = previous && bookedTimes.includes(previous);
 
-    // Para serviços de 60 min → bloqueia próximo slot
+    // Se o serviço ocupa 1h → não deixa usar o slot seguinte
     if (slotsUsados === 2) {
-      if (booked) return true;
-      if (previousIsBooked) return true;
+      if (booked) return true;           // próprio horário reservado
+      if (previousIsBooked) return true; // anterior reservado (ele comeu esse também)
     }
 
+    // Se o serviço ocupa só 30min → bloqueia apenas o próprio horário
     return booked;
   };
 
@@ -193,12 +199,14 @@ const TimeSlotSelection = ({
       <div className="text-center">
         <h2 className="text-2xl font-bold mb-2">Escolha Data e Horário</h2>
         <p className="text-muted-foreground">
-          Serviço: <span className="font-medium">{serviceNames[selectedService]}</span>
+          Serviço:{" "}
+          <span className="font-medium">
+            {serviceNames[selectedService] || selectedService}
+          </span>
         </p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-10 max-w-5xl mx-auto">
-
         {/* CALENDÁRIO */}
         <Card className="p-4">
           <h3 className="font-semibold mb-4 flex items-center">
@@ -212,10 +220,8 @@ const TimeSlotSelection = ({
             disabled={(date) => {
               const today = new Date();
               today.setHours(0, 0, 0, 0);
-
               const maxDate = new Date(today);
               maxDate.setDate(today.getDate() + 7);
-
               return date < today || date > maxDate || date.getDay() === 0;
             }}
           />
@@ -225,7 +231,9 @@ const TimeSlotSelection = ({
         <Card className="p-4">
           <h3 className="font-semibold mb-4">
             {selectedDate
-              ? `Horários para ${format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}`
+              ? `Horários para ${format(selectedDate, "dd 'de' MMMM", {
+                  locale: ptBR,
+                })}`
               : "Selecione uma data"}
           </h3>
 
@@ -234,14 +242,33 @@ const TimeSlotSelection = ({
               {timeSlots.map((slot, index) => {
                 const disabled = isSlotBlocked(slot.time, index);
 
+                // Regra anti-horário passado (opcional, se quiser manter)
+                let isPast = false;
+                if (selectedDate) {
+                  const now = new Date();
+                  const slotDateTime = new Date(selectedDate);
+                  const [hour, minute] = slot.time.split(":").map(Number);
+                  slotDateTime.setHours(hour, minute, 0, 0);
+                  if (
+                    slotDateTime.toDateString() === now.toDateString() &&
+                    slotDateTime.getTime() <= now.getTime() + MARGIN_MS
+                  ) {
+                    isPast = true;
+                  }
+                }
+
+                const finalDisabled = disabled || isPast || loading;
+
                 return (
                   <Button
                     key={slot.time}
                     variant={selectedTime === slot.time ? "default" : "outline"}
                     size="sm"
-                    disabled={disabled || loading}
+                    disabled={finalDisabled}
                     onClick={() => onTimeSelect(slot.time)}
-                    className={`${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                    className={`${
+                      finalDisabled ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                   >
                     {slot.time}
                   </Button>
@@ -254,7 +281,6 @@ const TimeSlotSelection = ({
             </p>
           )}
         </Card>
-
       </div>
 
       {/* RESUMO */}
@@ -262,12 +288,28 @@ const TimeSlotSelection = ({
         <Card className="max-w-md mx-auto p-4 bg-accent">
           <h3 className="font-semibold mb-3">Resumo do Agendamento</h3>
           <div className="space-y-2 text-sm">
-            <p><strong>Cliente:</strong> {userName}</p>
-            <p><strong>Telefone:</strong> {userPhone}</p>
-            <p><strong>Serviço:</strong> {serviceNames[selectedService]}</p>
-            <p><strong>Data:</strong> {format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
-            <p><strong>Horário:</strong> {selectedTime}</p>
-            <p><strong>Duração:</strong> {duracao} minutos</p>
+            <p>
+              <strong>Cliente:</strong> {userName}
+            </p>
+            <p>
+              <strong>Telefone:</strong> {userPhone}
+            </p>
+            <p>
+              <strong>Serviço:</strong>{" "}
+              {serviceNames[selectedService] || selectedService}
+            </p>
+            <p>
+              <strong>Data:</strong>{" "}
+              {format(selectedDate, "dd 'de' MMMM 'de' yyyy", {
+                locale: ptBR,
+              })}
+            </p>
+            <p>
+              <strong>Horário:</strong> {selectedTime}
+            </p>
+            <p>
+              <strong>Duração:</strong> {duracao} minutos
+            </p>
           </div>
 
           <Button
