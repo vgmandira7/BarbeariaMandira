@@ -31,6 +31,9 @@ interface TimeSlotSelectionProps {
   userName: string;
   userPhone: string;
   showGoogleCalendarButton?: boolean;
+
+  /** NOVO → duração manual, usada apenas pelo painel admin */
+  manualDuration?: number;
 }
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE || 'https://barbearia-mandira.vercel.app/api/bookings';
@@ -82,6 +85,7 @@ const TimeSlotSelection = ({
   selectedService,
   userName,
   userPhone,
+  manualDuration,
   showGoogleCalendarButton = true,
 }: TimeSlotSelectionProps) => {
 
@@ -116,8 +120,11 @@ const TimeSlotSelection = ({
       nome: userName,
       telefone: userPhone,
       servico: selectedService,
+      horario: selectedTime,
       data: selectedDate.toISOString().split("T")[0],
-      horario: selectedTime
+
+      // ← Envia duração manual se existir
+      duracao: manualDuration ?? undefined
     };
 
     try {
@@ -146,19 +153,15 @@ const TimeSlotSelection = ({
     }
   };
 
-  // --------------------------------------------
-  // BLOQUEIO DE HORÁRIOS — LÓGICA PRINCIPAL
-  // --------------------------------------------
-  const duracao = serviceDurations[selectedService] ?? 60;
-  const slotsUsados = duracao === 60 ? 2 : 1;
+  // -------------------------------------------------------------------
+  // DURAÇÃO REAL USADA PELO TIME SLOT
+  // -------------------------------------------------------------------
 
-  const getNextSlot = (time: string) => {
-    const [h, m] = time.split(":").map(Number);
-    const newMin = h * 60 + m + 30;
-    const hh = String(Math.floor(newMin / 60)).padStart(2, "0");
-    const mm = String(newMin % 60).padStart(2, "0");
-    return `${hh}:${mm}`;
-  };
+  const duracao = manualDuration
+    ? Number(manualDuration)
+    : (serviceDurations[selectedService] ?? 60);
+
+  const slotsUsados = duracao === 60 ? 2 : 1;
 
   const isSlotBlocked = (time: string, index: number) => {
     const booked = bookedTimes.includes(time);
@@ -166,6 +169,7 @@ const TimeSlotSelection = ({
     const previous = timeSlots[index - 1]?.time;
     const previousIsBooked = previous && bookedTimes.includes(previous);
 
+    // Para serviços de 60 min → bloqueia próximo slot
     if (slotsUsados === 2) {
       if (booked) return true;
       if (previousIsBooked) return true;
@@ -194,6 +198,7 @@ const TimeSlotSelection = ({
       </div>
 
       <div className="grid md:grid-cols-2 gap-10 max-w-5xl mx-auto">
+
         {/* CALENDÁRIO */}
         <Card className="p-4">
           <h3 className="font-semibold mb-4 flex items-center">
@@ -249,6 +254,7 @@ const TimeSlotSelection = ({
             </p>
           )}
         </Card>
+
       </div>
 
       {/* RESUMO */}
@@ -261,6 +267,7 @@ const TimeSlotSelection = ({
             <p><strong>Serviço:</strong> {serviceNames[selectedService]}</p>
             <p><strong>Data:</strong> {format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
             <p><strong>Horário:</strong> {selectedTime}</p>
+            <p><strong>Duração:</strong> {duracao} minutos</p>
           </div>
 
           <Button
@@ -269,15 +276,6 @@ const TimeSlotSelection = ({
           >
             Confirmar Agendamento
           </Button>
-
-          {showGoogleCalendarButton && (
-            <Button
-              onClick={() => {}}
-              className="w-full mt-2 bg-black text-white hover:bg-gray-800"
-            >
-              Adicionar ao Google Calendário
-            </Button>
-          )}
         </Card>
       )}
     </div>
