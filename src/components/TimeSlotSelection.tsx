@@ -71,7 +71,7 @@ const serviceNames: Record<string, string> = {
   cabelo: "Cabelo",
   "cabelo + barba": "Cabelo + Barba",
   barba: "Barba",
-  sobrancelha: "Sobrancelha",
+  
 };
 
 const MARGIN_MINUTES = 15;
