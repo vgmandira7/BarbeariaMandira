@@ -5,9 +5,10 @@ const Agendamento = require("../CreateBanco");
 
 const router = express.Router();
 
-// ------------ Função para calcular horários ocupados pelo serviço ------------
-function calcularHorariosOcupados(horario, servico) {
-  const duracoes = {
+// ------------ Função para calcular horários ocupados ------------
+function calcularHorariosOcupados(horario, servico, duracaoManual = null) {
+  // Durações padrão (cliente)
+  const duracoesPadrao = {
     "cabelo": 60,
     "hair": 60,
     "cabelo + barba": 60,
@@ -18,7 +19,9 @@ function calcularHorariosOcupados(horario, servico) {
     "eyebrow": 30,
   };
 
-  const duracao = duracoes[servico.toLowerCase()] || 60;
+  // Se o barbeiro enviar duração manual → usar ela
+  const duracao = duracaoManual || duracoesPadrao[servico.toLowerCase()] || 60;
+
   const slots = duracao === 60 ? 2 : 1;
 
   const [h, m] = horario.split(":").map(Number);
@@ -38,13 +41,19 @@ function calcularHorariosOcupados(horario, servico) {
 // Criar agendamento
 // -----------------------
 router.post("/", async (req, res) => {
-  const { nome, telefone, servico, data, horario } = req.body;
+  const { nome, telefone, servico, data, horario, duracao } = req.body;
 
   try {
-    // Calcula todos os horários afetados
-    const horariosOcupados = calcularHorariosOcupados(horario, servico);
+    // Calcula horários ocupados:
+    // ✔ se duracao (painel do barbeiro) -> usa duração manual
+    // ✔ senão -> usa duração padrão do serviço
+    const horariosOcupados = calcularHorariosOcupados(
+      horario,
+      servico,
+      duracao ? Number(duracao) : null
+    );
 
-    // Verifica conflito com qualquer horário ocupado
+    // Verificar conflito
     const conflito = await Agendamento.findOne({
       data,
       horario: { $in: horariosOcupados },
@@ -56,11 +65,20 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // Cria o agendamento
-    const novo = new Agendamento({ nome, telefone, servico, data, horario });
+    // Criar agendamento
+    const novo = new Agendamento({
+      nome,
+      telefone,
+      servico,
+      data,
+      horario,
+      duracao: duracao ? Number(duracao) : undefined,
+    });
+
     await novo.save();
 
     res.status(201).json(novo);
+
   } catch (err) {
     console.error("Erro ao criar agendamento:", err);
 
@@ -80,7 +98,6 @@ router.get("/all", async (req, res) => {
     const agendamentos = await Agendamento.find().sort({ data: 1, horario: 1 });
     res.json(agendamentos);
   } catch (err) {
-    console.error("Erro:", err);
     res.status(500).json({ error: "Erro ao buscar agendamentos" });
   }
 });
@@ -95,7 +112,6 @@ router.get("/data/:data", async (req, res) => {
     const agendamentos = await Agendamento.find({ data }).sort({ horario: 1 });
     res.json(agendamentos);
   } catch (err) {
-    console.error("Erro:", err);
     res.status(500).json({ error: "Erro ao buscar agendamentos" });
   }
 });
@@ -119,8 +135,8 @@ router.get("/stats", async (req, res) => {
       .exec();
 
     res.json({ hoje: hojeCount, semana: semanaCount, proximo });
+
   } catch (err) {
-    console.error("Erro:", err);
     res.status(500).json({ error: "Erro ao buscar estatísticas" });
   }
 });
@@ -139,8 +155,8 @@ router.delete("/:id", async (req, res) => {
     }
 
     res.json({ message: "Agendamento removido" });
+
   } catch (err) {
-    console.error("Erro:", err);
     res.status(500).json({ error: "Erro ao deletar agendamento" });
   }
 });
