@@ -65,13 +65,28 @@ const AdminPanel = () => {
       }
 
       setAppointments(prev => prev.filter(apt => apt._id !== id));
-      fetchAppointments(); // atualiza a lista
+      fetchAppointments(); // atualiza lista
 
     } catch (err) {
       console.error("Erro ao excluir:", err);
       alert("Erro ao conectar com servidor");
     }
   };
+
+  // ----------------------------
+  // 🆕 Total de agendamentos do mês
+  // ----------------------------
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const monthAppointments = appointments.filter((apt) => {
+    const aptDate = new Date(`${apt.data}T00:00:00`);
+    return (
+      aptDate.getMonth() === currentMonth &&
+      aptDate.getFullYear() === currentYear
+    );
+  });
 
   const currentTime = new Date().getTime();
   const upcomingAppointments = appointments
@@ -81,6 +96,7 @@ const AdminPanel = () => {
     })
     .filter((apt) => apt.dateTime.getTime() >= currentTime)
     .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
+
   const nextAppointment = upcomingAppointments[0];
 
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -104,14 +120,14 @@ const AdminPanel = () => {
             <CalendarIcon className="h-5 w-5 mr-2" />
             Selecionar Data
           </h3>
-      <Calendar
-        mode="single"
-        selected={selectedDate}
-        onSelect={(date) => date && setSelectedDate(date)}
-        locale={ptBR}      // ⬅️ ADICIONE ISSO
-        className="rounded-md"
-      />
 
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={(date) => date && setSelectedDate(date)}
+            locale={ptBR}
+            className="rounded-md"
+          />
         </Card>
 
         <Card className="lg:col-span-2 p-6 shadow-md">
@@ -180,14 +196,15 @@ const AdminPanel = () => {
           </div>
         </Card>
 
+        {/* 🔄 AGENDAMENTOS DO MÊS */}
         <Card className="p-6 shadow-md">
           <div className="flex items-center space-x-3">
             <div className="bg-success/10 p-2 rounded-lg">
               <CalendarIcon className="h-5 w-5 text-success" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total de Agendamentos</p>
-              <p className="text-xl font-bold">{appointments.length}</p>
+              <p className="text-sm text-muted-foreground">Agendamentos no Mês</p>
+              <p className="text-xl font-bold">{monthAppointments.length}</p>
             </div>
           </div>
         </Card>
