@@ -13,7 +13,7 @@ interface Appointment {
   telefone: string;
   servico: string;
   horario: string;
-  data: string;
+  data: string; // YYYY-MM-DD
 }
 
 const serviceNames: Record<string, string> = {
@@ -48,9 +48,6 @@ const AdminPanel = () => {
     return () => window.removeEventListener("appointments:refresh", refreshHandler);
   }, []);
 
-  // ---------------------
-  // 🆕 Função de excluir
-  // ---------------------
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este agendamento?")) return;
 
@@ -65,7 +62,7 @@ const AdminPanel = () => {
       }
 
       setAppointments(prev => prev.filter(apt => apt._id !== id));
-      fetchAppointments(); // atualiza lista
+      fetchAppointments();
 
     } catch (err) {
       console.error("Erro ao excluir:", err);
@@ -73,22 +70,23 @@ const AdminPanel = () => {
     }
   };
 
-  // ----------------------------
-  // 🆕 Total de agendamentos do mês
-  // ----------------------------
+  // ---------------------------
+  // 🆕 FILTRO DO MÊS ATUAL
+  // ---------------------------
   const now = new Date();
-  const currentMonth = now.getMonth();
+  const currentMonth = now.getMonth() + 1; // 1 a 12
   const currentYear = now.getFullYear();
 
   const monthAppointments = appointments.filter((apt) => {
-    const aptDate = new Date(`${apt.data}T00:00:00`);
-    return (
-      aptDate.getMonth() === currentMonth &&
-      aptDate.getFullYear() === currentYear
-    );
+    const [year, month] = apt.data.split("-").map(Number);
+    return year === currentYear && month === currentMonth;
   });
 
+  // ---------------------------
+  // Próximos agendamentos
+  // ---------------------------
   const currentTime = new Date().getTime();
+
   const upcomingAppointments = appointments
     .map((apt) => {
       const aptDateTime = new Date(`${apt.data}T${apt.horario}:00`);
@@ -181,7 +179,10 @@ const AdminPanel = () => {
         </Card>
       </div>
 
+      {/* --------- PAINEL INFERIOR --------- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        {/* Hoje */}
         <Card className="p-6 shadow-md">
           <div className="flex items-center space-x-3">
             <div className="bg-primary/10 p-2 rounded-lg">
@@ -196,7 +197,7 @@ const AdminPanel = () => {
           </div>
         </Card>
 
-        {/* 🔄 AGENDAMENTOS DO MÊS */}
+        {/* Mês Atual */}
         <Card className="p-6 shadow-md">
           <div className="flex items-center space-x-3">
             <div className="bg-success/10 p-2 rounded-lg">
@@ -209,6 +210,7 @@ const AdminPanel = () => {
           </div>
         </Card>
 
+        {/* Próximo */}
         <Card className="p-6 shadow-md">
           <div className="flex items-center space-x-3">
             <div className="bg-accent p-2 rounded-lg">
@@ -224,6 +226,7 @@ const AdminPanel = () => {
             </div>
           </div>
         </Card>
+
       </div>
     </div>
   );
