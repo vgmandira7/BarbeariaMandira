@@ -104,12 +104,14 @@ const AdminPanel = () => {
             <CalendarIcon className="h-5 w-5 mr-2" />
             Selecionar Data
           </h3>
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={(date) => date && setSelectedDate(date)}
-            className="rounded-md"
-          />
+      <Calendar
+        mode="single"
+        selected={selectedDate}
+        onSelect={(date) => date && setSelectedDate(date)}
+        locale={ptBR}      // ⬅️ ADICIONE ISSO
+        className="rounded-md"
+      />
+
         </Card>
 
         <Card className="lg:col-span-2 p-6 shadow-md">
