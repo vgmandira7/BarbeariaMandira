@@ -156,10 +156,11 @@ const handleConfirmBooking = async () => {
   if (!selectedDate || !selectedTime) return;
 
   // 🔹 SE VEIO onConfirm (caso do barbeiro), NÃO FAZ NADA AQUI
-  if (onConfirm) {
-    onConfirm();
-    return;
-  }
+if (enableWhatsApp === false) {
+  onConfirm?.();
+  return;
+}
+
 
   // 🔹 FLUXO DO CLIENTE
   const bookingData = {
