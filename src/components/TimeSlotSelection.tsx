@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 // ---------------------
-// DURAÇÕES PADRÃO
+// DURAÇÕES DOS SERVIÇOS
 // ---------------------
 const serviceDurations: Record<string, number> = {
   cabelo: 60,
@@ -25,10 +25,12 @@ interface TimeSlotSelectionProps {
   selectedTime: string | null;
   onDateSelect: (date: Date) => void;
   onTimeSelect: (time: string | null) => void;
+  onConfirm: () => void;
   selectedService: string;
   userName: string;
   userPhone: string;
   manualDuration?: number;
+  showGoogleCalendarButton?: boolean;
 }
 
 const apiBaseUrl =
@@ -69,6 +71,9 @@ const serviceNames: Record<string, string> = {
   barba: "Barba",
 };
 
+const MARGIN_MINUTES = 15;
+const MARGIN_MS = MARGIN_MINUTES * 60 * 1000;
+
 const TimeSlotSelection = ({
   selectedDate,
   selectedTime,
@@ -79,8 +84,8 @@ const TimeSlotSelection = ({
   userPhone,
   manualDuration,
 }: TimeSlotSelectionProps) => {
-  const [loading, setLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
 
   useEffect(() => {
@@ -88,10 +93,19 @@ const TimeSlotSelection = ({
   }, [selectedDate]);
 
   const fetchBookings = async (date: Date) => {
-    const formattedDate = format(date, "yyyy-MM-dd");
-    const res = await fetch(`${apiBaseUrl}/data/${formattedDate}`);
-    const data = await res.json();
-    setBookedTimes(data.map((b: any) => b.horario));
+    try {
+      const formattedDate = format(date, "yyyy-MM-dd");
+      const res = await fetch(`${apiBaseUrl}/data/${formattedDate}`);
+      const dayBookings = await res.json();
+      setBookedTimes(dayBookings.map((b: any) => b.horario));
+    } catch (err) {
+      console.error("Erro ao buscar agendamentos", err);
+    }
+  };
+
+  const handleDateSelect = (date: Date) => {
+    onDateSelect(date);
+    onTimeSelect(null);
   };
 
   const duracao =
@@ -107,47 +121,52 @@ const TimeSlotSelection = ({
     const previousIsBooked = previous && bookedTimes.includes(previous);
 
     if (slotsUsados === 2) {
-      if (booked || previousIsBooked) return true;
+      if (booked) return true;
+      if (previousIsBooked) return true;
     }
 
     return booked;
   };
 
-  // 🔥 GERA LINK DO WHATSAPP
-  const getWhatsAppLink = () => {
-    const whatsappNumber = "5513997434050";
+// 🔥 REDIRECIONAMENTO PARA WHATSAPP
+const redirectToWhatsApp = () => {
+  const whatsappNumber = "5513997434050";
 
-    const message = `
+  const message = `
 Olá! 👋 Meu agendamento foi confirmado ✅
 
-📌 Detalhes do agendamento:
+📌 *Detalhes do agendamento*
 👤 Cliente: ${userName}
 📞 Telefone: ${userPhone}
 ✂️ Serviço: ${serviceNames[selectedService] || selectedService}
 📅 Data: ${format(selectedDate!, "dd/MM/yyyy")}
 ⏰ Horário: ${selectedTime}
 ⏳ Duração: ${duracao} minutos
+
+Obrigado! 😊
 `;
 
-    return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-      message
-    )}`;
+  const link = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+    message
+  )}`;
+
+  window.open(link, "_blank");
+};
+
+const handleConfirmBooking = async () => {
+  if (!selectedDate || !selectedTime) return;
+
+  const bookingData: any = {
+    nome: userName,
+    telefone: userPhone,
+    servico: selectedService,
+    data: selectedDate.toISOString().split("T")[0],
+    horario: selectedTime,
+    duracao,
   };
 
-  // ✅ CONFIRMA E REDIRECIONA
-  const handleConfirmBooking = async () => {
-    if (!selectedDate || !selectedTime) return;
-
+  try {
     setLoading(true);
-
-    const bookingData: any = {
-      nome: userName,
-      telefone: userPhone,
-      servico: selectedService,
-      data: selectedDate.toISOString().split("T")[0],
-      horario: selectedTime,
-      duracao,
-    };
 
     const res = await fetch(apiBaseUrl, {
       method: "POST",
@@ -155,25 +174,35 @@ Olá! 👋 Meu agendamento foi confirmado ✅
       body: JSON.stringify(bookingData),
     });
 
+    const response = await res.json();
+
     if (!res.ok) {
-      alert("Erro ao salvar agendamento");
+      alert(response.error || "Erro ao salvar agendamento");
       setLoading(false);
       return;
     }
 
+    // ✅ ATUALIZA AGENDA
+    await fetchBookings(selectedDate);
+
+    // ✅ ABRE WHATSAPP (ainda no clique)
+    redirectToWhatsApp();
+
+    // ✅ MOSTRA CONFIRMAÇÃO VISUAL
     setShowConfirmation(true);
     setLoading(false);
+  } catch (err) {
+    console.error(err);
+    alert("Erro ao salvar agendamento");
+    setLoading(false);
+  }
+};
 
-    // 🚀 REDIRECIONAMENTO GARANTIDO
-    setTimeout(() => {
-      window.location.href = getWhatsAppLink();
-    }, 500);
-  };
 
   if (showConfirmation) {
     return (
       <div className="text-center py-12">
-        <CheckCircle className="h-16 w-16 text-success mx-auto mb-4" />
+        <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
         <h2 className="text-2xl font-bold">Agendamento Confirmado!</h2>
         <p className="text-muted-foreground">
           Você será redirecionado para o WhatsApp 📲
@@ -184,37 +213,79 @@ Olá! 👋 Meu agendamento foi confirmado ✅
 
   return (
     <div className="space-y-6 px-2">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold">Escolha Data e Horário</h2>
+        <p className="text-muted-foreground">
+          Serviço:{" "}
+          <strong>{serviceNames[selectedService] || selectedService}</strong>
+        </p>
+      </div>
+
       <div className="grid md:grid-cols-2 gap-10 max-w-5xl mx-auto">
         <Card className="p-4">
+          <h3 className="font-semibold mb-4 flex items-center">
+            <Clock className="h-4 w-4 mr-2" /> Selecione uma Data
+          </h3>
           <Calendar
             mode="single"
             selected={selectedDate}
-            onSelect={(date) => date && onDateSelect(date)}
+            onSelect={(date) => date && handleDateSelect(date)}
             locale={ptBR}
+            disabled={(date) => {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const maxDate = new Date(today);
+              maxDate.setDate(today.getDate() + 7);
+              return date < today || date > maxDate || date.getDay() === 0;
+            }}
           />
         </Card>
 
         <Card className="p-4">
-          <div className="grid grid-cols-2 gap-2">
-            {timeSlots.map((slot, index) => (
-              <Button
-                key={slot.time}
-                disabled={isSlotBlocked(slot.time, index) || loading}
-                onClick={() => onTimeSelect(slot.time)}
-              >
-                {slot.time}
-              </Button>
-            ))}
-          </div>
+          {selectedDate ? (
+            <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto">
+              {timeSlots.map((slot, index) => {
+                const disabled =
+                  isSlotBlocked(slot.time, index) || loading;
+
+                return (
+                  <Button
+                    key={slot.time}
+                    size="sm"
+                    variant={
+                      selectedTime === slot.time ? "default" : "outline"
+                    }
+                    disabled={disabled}
+                    onClick={() => onTimeSelect(slot.time)}
+                  >
+                    {slot.time}
+                  </Button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-center py-10 text-muted-foreground">
+              Selecione uma data
+            </p>
+          )}
         </Card>
       </div>
 
       {selectedDate && selectedTime && (
-        <Card className="max-w-md mx-auto p-4">
+        <Card className="max-w-md mx-auto p-4 bg-accent">
+          <h3 className="font-semibold mb-3">Resumo do Agendamento</h3>
+
+          <p><strong>Cliente:</strong> {userName}</p>
+          <p><strong>Telefone:</strong> {userPhone}</p>
+          <p><strong>Serviço:</strong> {serviceNames[selectedService]}</p>
+          <p><strong>Data:</strong> {format(selectedDate, "dd/MM/yyyy")}</p>
+          <p><strong>Horário:</strong> {selectedTime}</p>
+          <p><strong>Duração:</strong> {duracao} minutos</p>
+
           <Button
             onClick={handleConfirmBooking}
+            className="w-full mt-4 bg-black text-white"
             disabled={loading}
-            className="w-full bg-black text-white"
           >
             Confirmar Agendamento
           </Button>
