@@ -25,12 +25,13 @@ interface TimeSlotSelectionProps {
   selectedTime: string | null;
   onDateSelect: (date: Date) => void;
   onTimeSelect: (time: string | null) => void;
-  onConfirm: () => void;
+  onConfirm?: () => void;
   selectedService: string;
   userName: string;
   userPhone: string;
   manualDuration?: number;
   showGoogleCalendarButton?: boolean;
+  enableWhatsApp?: boolean;
 }
 
 const apiBaseUrl =
@@ -71,25 +72,26 @@ const serviceNames: Record<string, string> = {
   barba: "Barba",
 };
 
-const MARGIN_MINUTES = 15;
-const MARGIN_MS = MARGIN_MINUTES * 60 * 1000;
-
 const TimeSlotSelection = ({
   selectedDate,
   selectedTime,
   onDateSelect,
   onTimeSelect,
+  onConfirm,
   selectedService,
   userName,
   userPhone,
   manualDuration,
+  enableWhatsApp = true,
 }: TimeSlotSelectionProps) => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
 
   useEffect(() => {
-    if (selectedDate) fetchBookings(selectedDate);
+    if (selectedDate) {
+      fetchBookings(selectedDate);
+    }
   }, [selectedDate]);
 
   const fetchBookings = async (date: Date) => {
@@ -121,18 +123,17 @@ const TimeSlotSelection = ({
     const previousIsBooked = previous && bookedTimes.includes(previous);
 
     if (slotsUsados === 2) {
-      if (booked) return true;
-      if (previousIsBooked) return true;
+      if (booked || previousIsBooked) return true;
     }
 
     return booked;
   };
 
-// 🔥 REDIRECIONAMENTO PARA WHATSAPP
-const redirectToWhatsApp = () => {
-  const whatsappNumber = "5513997434050";
+  // 🔥 WHATSAPP
+  const redirectToWhatsApp = () => {
+    const whatsappNumber = "5513997434050";
 
-  const message = `
+    const message = `
 Olá! 👋 Meu agendamento foi confirmado ✅
 
 📌 *Detalhes do agendamento*
@@ -142,65 +143,61 @@ Olá! 👋 Meu agendamento foi confirmado ✅
 📅 Data: ${format(selectedDate!, "dd/MM/yyyy")}
 ⏰ Horário: ${selectedTime}
 ⏳ Duração: ${duracao} minutos
-
 `;
 
-  const link = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-    message
-  )}`;
+    const link = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+      message
+    )}`;
 
-  window.open(link, "_blank");
-};
-
-const handleConfirmBooking = async () => {
-  if (!selectedDate || !selectedTime) return;
-
-  // ✂️ FLUXO BARBEIRO
-  if (enableWhatsApp === false && onConfirm) {
-    onConfirm();
-    return;
-  }
-
-  // 👤 FLUXO CLIENTE
-  const bookingData = {
-    nome: userName,
-    telefone: userPhone,
-    servico: selectedService,
-    data: selectedDate.toISOString().split("T")[0],
-    horario: selectedTime,
-    duracao,
+    window.open(link, "_blank");
   };
 
-  try {
-    setLoading(true);
+  const handleConfirmBooking = async () => {
+    if (!selectedDate || !selectedTime) return;
 
-    const res = await fetch(apiBaseUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(bookingData),
-    });
-
-    if (!res.ok) {
-      alert("Erro ao salvar agendamento");
-      setLoading(false);
+    // ✂️ Fluxo barbeiro
+    if (enableWhatsApp === false && onConfirm) {
+      onConfirm();
       return;
     }
 
-    await fetchBookings(selectedDate);
-    setShowConfirmation(true);
-    setLoading(false);
+    // 👤 Fluxo cliente
+    const bookingData = {
+      nome: userName,
+      telefone: userPhone,
+      servico: selectedService,
+      data: selectedDate.toISOString().split("T")[0],
+      horario: selectedTime,
+      duracao,
+    };
 
-    if (enableWhatsApp !== false) {
-      redirectToWhatsApp();
+    try {
+      setLoading(true);
+
+      const res = await fetch(apiBaseUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bookingData),
+      });
+
+      if (!res.ok) {
+        alert("Erro ao salvar agendamento");
+        setLoading(false);
+        return;
+      }
+
+      await fetchBookings(selectedDate);
+      setShowConfirmation(true);
+      setLoading(false);
+
+      if (enableWhatsApp) {
+        redirectToWhatsApp();
+      }
+    } catch (err) {
+      alert("Erro ao salvar agendamento");
+      setLoading(false);
     }
-  } catch (err) {
-    alert("Erro ao salvar agendamento");
-    setLoading(false);
-  }
-};
-
-
-
+  };
 
   if (showConfirmation) {
     return (
@@ -229,6 +226,7 @@ const handleConfirmBooking = async () => {
           <h3 className="font-semibold mb-4 flex items-center">
             <Clock className="h-4 w-4 mr-2" /> Selecione uma Data
           </h3>
+
           <Calendar
             mode="single"
             selected={selectedDate}
@@ -237,8 +235,10 @@ const handleConfirmBooking = async () => {
             disabled={(date) => {
               const today = new Date();
               today.setHours(0, 0, 0, 0);
+
               const maxDate = new Date(today);
               maxDate.setDate(today.getDate() + 7);
+
               return date < today || date > maxDate || date.getDay() === 0;
             }}
           />
