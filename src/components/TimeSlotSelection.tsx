@@ -156,7 +156,14 @@ Obrigado! 😊
 const handleConfirmBooking = async () => {
   if (!selectedDate || !selectedTime) return;
 
-  const bookingData: any = {
+  // 🔹 SE VEIO onConfirm (caso do barbeiro), NÃO FAZ NADA AQUI
+  if (onConfirm) {
+    onConfirm();
+    return;
+  }
+
+  // 🔹 FLUXO DO CLIENTE
+  const bookingData = {
     nome: userName,
     telefone: userPhone,
     servico: selectedService,
@@ -174,29 +181,25 @@ const handleConfirmBooking = async () => {
       body: JSON.stringify(bookingData),
     });
 
-    const response = await res.json();
-
     if (!res.ok) {
-      alert(response.error || "Erro ao salvar agendamento");
+      alert("Erro ao salvar agendamento");
       setLoading(false);
       return;
     }
 
-    // ✅ ATUALIZA AGENDA
     await fetchBookings(selectedDate);
-
-    // ✅ ABRE WHATSAPP (ainda no clique)
-    redirectToWhatsApp();
-
-    // ✅ MOSTRA CONFIRMAÇÃO VISUAL
     setShowConfirmation(true);
     setLoading(false);
+
+    if (enableWhatsApp) {
+      redirectToWhatsApp();
+    }
   } catch (err) {
-    console.error(err);
     alert("Erro ao salvar agendamento");
     setLoading(false);
   }
 };
+
 
 
   if (showConfirmation) {
