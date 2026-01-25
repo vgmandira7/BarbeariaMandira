@@ -155,13 +155,13 @@ Olá! 👋 Meu agendamento foi confirmado ✅
 const handleConfirmBooking = async () => {
   if (!selectedDate || !selectedTime) return;
 
-  // ✂️ FLUXO DO BARBEIRO
+  // ✂️ FLUXO BARBEIRO
   if (enableWhatsApp === false && onConfirm) {
     onConfirm();
     return;
   }
 
-  // 👤 FLUXO DO CLIENTE
+  // 👤 FLUXO CLIENTE
   const bookingData = {
     nome: userName,
     telefone: userPhone,
