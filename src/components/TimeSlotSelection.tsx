@@ -25,13 +25,14 @@ interface TimeSlotSelectionProps {
   selectedTime: string | null;
   onDateSelect: (date: Date) => void;
   onTimeSelect: (time: string | null) => void;
-  onConfirm: () => void;
+  onConfirm?: () => void;        // 👈 barbeiro
   selectedService: string;
   userName: string;
   userPhone: string;
   manualDuration?: number;
-  showGoogleCalendarButton?: boolean;
+  enableWhatsApp?: boolean;     // 👈 cliente vs barbeiro
 }
+
 
 const apiBaseUrl =
   import.meta.env.VITE_API_BASE ||
@@ -79,11 +80,14 @@ const TimeSlotSelection = ({
   selectedTime,
   onDateSelect,
   onTimeSelect,
+  onConfirm,
   selectedService,
   userName,
   userPhone,
   manualDuration,
+  enableWhatsApp = true,
 }: TimeSlotSelectionProps) => {
+
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
@@ -155,14 +159,13 @@ Olá! 👋 Meu agendamento foi confirmado ✅
 const handleConfirmBooking = async () => {
   if (!selectedDate || !selectedTime) return;
 
-  // 🔹 SE VEIO onConfirm (caso do barbeiro), NÃO FAZ NADA AQUI
-if (enableWhatsApp === false) {
-  onConfirm?.();
-  return;
-}
+  // 🔹 FLUXO DO BARBEIRO (sem WhatsApp)
+  if (enableWhatsApp === false) {
+    onConfirm?.();
+    return;
+  }
 
-
-  // 🔹 FLUXO DO CLIENTE
+  // 🔹 FLUXO DO CLIENTE (com WhatsApp)
   const bookingData = {
     nome: userName,
     telefone: userPhone,
@@ -187,18 +190,16 @@ if (enableWhatsApp === false) {
       return;
     }
 
-    await fetchBookings(selectedDate);
     setShowConfirmation(true);
     setLoading(false);
 
-    if (enableWhatsApp) {
-      redirectToWhatsApp();
-    }
+    redirectToWhatsApp(); // 👈 só cliente
   } catch (err) {
     alert("Erro ao salvar agendamento");
     setLoading(false);
   }
 };
+
 
 
 
