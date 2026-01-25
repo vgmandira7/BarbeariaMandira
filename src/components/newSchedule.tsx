@@ -137,19 +137,7 @@ const NovoAgendamento = () => {
 
           {/* HORÁRIOS */}
           <div className="w-full md:flex-1">
-          interface TimeSlotSelectionProps {
-            selectedDate: Date | null;
-            selectedTime: string | null;
-            onDateSelect: (date: Date) => void;
-            onTimeSelect: (time: string | null) => void;
-            onConfirm?: () => void; // 👈 AGORA OPCIONAL
-            selectedService: string;
-            userName: string;
-            userPhone: string;
-            manualDuration?: number;
-            showGoogleCalendarButton?: boolean;
-            enableWhatsApp?: boolean; // 👈 CONTROLA O FLUXO
-          }
+<TimeSlotSelection selectedDate={data} selectedTime={horario} onDateSelect={setData} onTimeSelect={setHorario} onConfirm={handleConfirmBooking} selectedService={servico} userName={nome} userPhone={telefone} manualDuration={Number(duracao)} // 👈 ISSO AQUI É O SEGREDO showGoogleCalendarButton={false} />
 
 
 
