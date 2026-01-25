@@ -138,16 +138,19 @@ const NovoAgendamento = () => {
           {/* HORÁRIOS */}
           <div className="w-full md:flex-1">
           <TimeSlotSelection
-            selectedDate={selectedDate}
-            selectedTime={selectedTime}
-            onDateSelect={setSelectedDate}
-            onTimeSelect={setSelectedTime}
-            selectedService={selectedService}
-            userName={userName}
-            userPhone={userPhone}
-          
-            enableWhatsApp={false} // 🔥 AQUI
+            selectedDate={data}
+            selectedTime={horario}
+            onDateSelect={setData}
+            onTimeSelect={setHorario}
+            onConfirm={handleConfirmBooking} // 👈 barbeiro controla tudo
+            selectedService={servico}
+            userName={nome}
+            userPhone={telefone}
+            manualDuration={Number(duracao)}
+            showGoogleCalendarButton={false}
+            enableWhatsApp={false} // 👈 agora funciona de verdade
           />
+
 
 
 
