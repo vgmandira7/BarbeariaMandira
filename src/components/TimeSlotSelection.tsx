@@ -155,13 +155,13 @@ Olá! 👋 Meu agendamento foi confirmado ✅
 const handleConfirmBooking = async () => {
   if (!selectedDate || !selectedTime) return;
 
-  // 🔹 SE VEIO onConfirm (caso do barbeiro), NÃO FAZ NADA AQUI
-  if (onConfirm) {
+  // ✂️ FLUXO DO BARBEIRO
+  if (enableWhatsApp === false && onConfirm) {
     onConfirm();
     return;
   }
 
-  // 🔹 FLUXO DO CLIENTE
+  // 👤 FLUXO DO CLIENTE
   const bookingData = {
     nome: userName,
     telefone: userPhone,
@@ -190,7 +190,7 @@ const handleConfirmBooking = async () => {
     setShowConfirmation(true);
     setLoading(false);
 
-    if (enableWhatsApp) {
+    if (enableWhatsApp !== false) {
       redirectToWhatsApp();
     }
   } catch (err) {
@@ -198,6 +198,7 @@ const handleConfirmBooking = async () => {
     setLoading(false);
   }
 };
+
 
 
 
