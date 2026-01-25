@@ -142,16 +142,15 @@ const NovoAgendamento = () => {
             selectedTime: string | null;
             onDateSelect: (date: Date) => void;
             onTimeSelect: (time: string | null) => void;
-            onConfirm: () => void;
+            onConfirm?: () => void; // 👈 AGORA OPCIONAL
             selectedService: string;
             userName: string;
             userPhone: string;
             manualDuration?: number;
             showGoogleCalendarButton?: boolean;
-          
-            // 🆕 NOVO
-            enableWhatsApp?: boolean;
+            enableWhatsApp?: boolean; // 👈 CONTROLA O FLUXO
           }
+
 
 
 
