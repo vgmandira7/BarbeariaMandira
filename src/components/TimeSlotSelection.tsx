@@ -143,7 +143,6 @@ Olá! 👋 Meu agendamento foi confirmado ✅
 ⏰ Horário: ${selectedTime}
 ⏳ Duração: ${duracao} minutos
 
-Obrigado! 😊
 `;
 
   const link = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
