@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -7,12 +7,12 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 // ---------------------
-// TABELA DE DURAÇÕES (CLIENTE)
+// DURAÇÕES DOS SERVIÇOS
 // ---------------------
 const serviceDurations: Record<string, number> = {
-  "cabelo": 60,
+  cabelo: 60,
   "cabelo + barba": 60,
-  "barba": 30,
+  barba: 30,
 };
 
 interface TimeSlot {
@@ -24,20 +24,18 @@ interface TimeSlotSelectionProps {
   selectedDate: Date | null;
   selectedTime: string | null;
   onDateSelect: (date: Date) => void;
-  onTimeSelect: (time: string) => void;
+  onTimeSelect: (time: string | null) => void;
   onConfirm: () => void;
   selectedService: string;
   userName: string;
   userPhone: string;
-  showGoogleCalendarButton?: boolean;
-
-  // 🔥 NOVO: duração manual (painel do barbeiro)
   manualDuration?: number;
+  showGoogleCalendarButton?: boolean;
 }
 
-// IMPORTANTE: aqui já é a rota completa
 const apiBaseUrl =
-  import.meta.env.VITE_API_BASE || "https://barbearia-mandira.vercel.app/api/bookings";
+  import.meta.env.VITE_API_BASE ||
+  "https://barbearia-mandira.vercel.app/api/bookings";
 
 const timeSlots: TimeSlot[] = [
   { time: "07:00", available: true },
@@ -71,7 +69,6 @@ const serviceNames: Record<string, string> = {
   cabelo: "Cabelo",
   "cabelo + barba": "Cabelo + Barba",
   barba: "Barba",
-  
 };
 
 const MARGIN_MINUTES = 15;
@@ -82,18 +79,15 @@ const TimeSlotSelection = ({
   selectedTime,
   onDateSelect,
   onTimeSelect,
-  onConfirm,
   selectedService,
   userName,
   userPhone,
   manualDuration,
-  showGoogleCalendarButton = true,
 }: TimeSlotSelectionProps) => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
 
-  // Carrega agendamentos ao mudar a data
   useEffect(() => {
     if (selectedDate) fetchBookings(selectedDate);
   }, [selectedDate]);
@@ -114,8 +108,53 @@ const TimeSlotSelection = ({
     onTimeSelect(null);
   };
 
+  const duracao =
+    manualDuration !== undefined
+      ? Number(manualDuration)
+      : serviceDurations[selectedService] ?? 60;
+
+  const slotsUsados = duracao >= 60 ? 2 : 1;
+
+  const isSlotBlocked = (time: string, index: number) => {
+    const booked = bookedTimes.includes(time);
+    const previous = timeSlots[index - 1]?.time;
+    const previousIsBooked = previous && bookedTimes.includes(previous);
+
+    if (slotsUsados === 2) {
+      if (booked) return true;
+      if (previousIsBooked) return true;
+    }
+
+    return booked;
+  };
+
+  // 🔥 REDIRECIONAMENTO PARA WHATSAPP
+  const redirectToWhatsApp = () => {
+    const whatsappNumber = "5513997434050";
+
+    const message = `
+Olá! 👋 Meu agendamento foi confirmado ✅
+
+📌 *Detalhes do agendamento*
+👤 Cliente: ${userName}
+📞 Telefone: ${userPhone}
+✂️ Serviço: ${serviceNames[selectedService] || selectedService}
+📅 Data: ${format(selectedDate!, "dd/MM/yyyy")}
+⏰ Horário: ${selectedTime}
+⏳ Duração: ${duracao} minutos
+
+Obrigado! 😊
+`;
+
+    const link = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+      message
+    )}`;
+
+    window.open(link, "_blank");
+  };
+
   const handleConfirmBooking = async () => {
-    if (!selectedDate || !selectedTime || !selectedService) return;
+    if (!selectedDate || !selectedTime) return;
 
     const bookingData: any = {
       nome: userName,
@@ -123,16 +162,13 @@ const TimeSlotSelection = ({
       servico: selectedService,
       data: selectedDate.toISOString().split("T")[0],
       horario: selectedTime,
+      duracao,
     };
-
-    // 🔥 Se tiver duração manual (admin), manda pro backend
-    if (manualDuration !== undefined && manualDuration !== null) {
-      bookingData.duracao = Number(manualDuration);
-    }
 
     try {
       setLoading(true);
-      const res = await fetch(`${apiBaseUrl}`, {
+
+      const res = await fetch(apiBaseUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(bookingData),
@@ -149,6 +185,11 @@ const TimeSlotSelection = ({
       await fetchBookings(selectedDate);
       setShowConfirmation(true);
       setLoading(false);
+
+      // 🔥 abre WhatsApp após confirmar
+      setTimeout(() => {
+        redirectToWhatsApp();
+      }, 800);
     } catch (err) {
       console.error(err);
       alert("Erro ao salvar agendamento");
@@ -156,39 +197,14 @@ const TimeSlotSelection = ({
     }
   };
 
-  // ------------------------------
-  // DURAÇÃO REAL USADA NO CÁLCULO
-  // ------------------------------
-  const duracao =
-    manualDuration !== undefined && manualDuration !== null
-      ? Number(manualDuration)
-      : serviceDurations[selectedService] ?? 60;
-
-  const slotsUsados = duracao >= 60 ? 2 : 1;
-
-  const isSlotBlocked = (time: string, index: number) => {
-    const booked = bookedTimes.includes(time);
-
-    // Verifica se o horário anterior está reservado
-    const previous = timeSlots[index - 1]?.time;
-    const previousIsBooked = previous && bookedTimes.includes(previous);
-
-    // Se o serviço ocupa 1h → não deixa usar o slot seguinte
-    if (slotsUsados === 2) {
-      if (booked) return true;           // próprio horário reservado
-      if (previousIsBooked) return true; // anterior reservado (ele comeu esse também)
-    }
-
-    // Se o serviço ocupa só 30min → bloqueia apenas o próprio horário
-    return booked;
-  };
-
   if (showConfirmation) {
     return (
       <div className="text-center py-12">
-        <CheckCircle className="h-16 w-16 text-success mx-auto mb-4" />
+        <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
         <h2 className="text-2xl font-bold">Agendamento Confirmado!</h2>
-        <p className="text-muted-foreground">Seu horário foi reservado.</p>
+        <p className="text-muted-foreground">
+          Você será redirecionado para o WhatsApp 📲
+        </p>
       </div>
     );
   }
@@ -196,17 +212,14 @@ const TimeSlotSelection = ({
   return (
     <div className="space-y-6 px-2">
       <div className="text-center">
-        <h2 className="text-2xl font-bold mb-2">Escolha Data e Horário</h2>
+        <h2 className="text-2xl font-bold">Escolha Data e Horário</h2>
         <p className="text-muted-foreground">
           Serviço:{" "}
-          <span className="font-medium">
-            {serviceNames[selectedService] || selectedService}
-          </span>
+          <strong>{serviceNames[selectedService] || selectedService}</strong>
         </p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-10 max-w-5xl mx-auto">
-        {/* CALENDÁRIO */}
         <Card className="p-4">
           <h3 className="font-semibold mb-4 flex items-center">
             <Clock className="h-4 w-4 mr-2" /> Selecione uma Data
@@ -226,48 +239,22 @@ const TimeSlotSelection = ({
           />
         </Card>
 
-        {/* HORÁRIOS */}
         <Card className="p-4">
-          <h3 className="font-semibold mb-4">
-            {selectedDate
-              ? `Horários para ${format(selectedDate, "dd 'de' MMMM", {
-                  locale: ptBR,
-                })}`
-              : "Selecione uma data"}
-          </h3>
-
           {selectedDate ? (
-            <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto pr-2">
+            <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto">
               {timeSlots.map((slot, index) => {
-                const disabled = isSlotBlocked(slot.time, index);
-
-                // Regra anti-horário passado (opcional, se quiser manter)
-                let isPast = false;
-                if (selectedDate) {
-                  const now = new Date();
-                  const slotDateTime = new Date(selectedDate);
-                  const [hour, minute] = slot.time.split(":").map(Number);
-                  slotDateTime.setHours(hour, minute, 0, 0);
-                  if (
-                    slotDateTime.toDateString() === now.toDateString() &&
-                    slotDateTime.getTime() <= now.getTime() + MARGIN_MS
-                  ) {
-                    isPast = true;
-                  }
-                }
-
-                const finalDisabled = disabled || isPast || loading;
+                const disabled =
+                  isSlotBlocked(slot.time, index) || loading;
 
                 return (
                   <Button
                     key={slot.time}
-                    variant={selectedTime === slot.time ? "default" : "outline"}
                     size="sm"
-                    disabled={finalDisabled}
+                    variant={
+                      selectedTime === slot.time ? "default" : "outline"
+                    }
+                    disabled={disabled}
                     onClick={() => onTimeSelect(slot.time)}
-                    className={`${
-                      finalDisabled ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
                   >
                     {slot.time}
                   </Button>
@@ -275,45 +262,28 @@ const TimeSlotSelection = ({
               })}
             </div>
           ) : (
-            <p className="text-center text-muted-foreground py-8">
-              Selecione uma data para ver os horários
+            <p className="text-center py-10 text-muted-foreground">
+              Selecione uma data
             </p>
           )}
         </Card>
       </div>
 
-      {/* RESUMO */}
       {selectedDate && selectedTime && (
         <Card className="max-w-md mx-auto p-4 bg-accent">
           <h3 className="font-semibold mb-3">Resumo do Agendamento</h3>
-          <div className="space-y-2 text-sm">
-            <p>
-              <strong>Cliente:</strong> {userName}
-            </p>
-            <p>
-              <strong>Telefone:</strong> {userPhone}
-            </p>
-            <p>
-              <strong>Serviço:</strong>{" "}
-              {serviceNames[selectedService] || selectedService}
-            </p>
-            <p>
-              <strong>Data:</strong>{" "}
-              {format(selectedDate, "dd 'de' MMMM 'de' yyyy", {
-                locale: ptBR,
-              })}
-            </p>
-            <p>
-              <strong>Horário:</strong> {selectedTime}
-            </p>
-            <p>
-              <strong>Duração:</strong> {duracao} minutos
-            </p>
-          </div>
+
+          <p><strong>Cliente:</strong> {userName}</p>
+          <p><strong>Telefone:</strong> {userPhone}</p>
+          <p><strong>Serviço:</strong> {serviceNames[selectedService]}</p>
+          <p><strong>Data:</strong> {format(selectedDate, "dd/MM/yyyy")}</p>
+          <p><strong>Horário:</strong> {selectedTime}</p>
+          <p><strong>Duração:</strong> {duracao} minutos</p>
 
           <Button
             onClick={handleConfirmBooking}
-            className="w-full mt-4 bg-black text-white hover:bg-gray-800"
+            className="w-full mt-4 bg-black text-white"
+            disabled={loading}
           >
             Confirmar Agendamento
           </Button>
