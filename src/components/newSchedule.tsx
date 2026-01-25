@@ -142,14 +142,14 @@ const NovoAgendamento = () => {
             selectedTime={horario}
             onDateSelect={setData}
             onTimeSelect={setHorario}
-            onConfirm={handleConfirmBooking} // 👈 barbeiro controla tudo
+            onConfirm={handleConfirmBooking}
             selectedService={servico}
             userName={nome}
             userPhone={telefone}
             manualDuration={Number(duracao)}
-            showGoogleCalendarButton={false}
-            enableWhatsApp={false} // 👈 agora funciona de verdade
+            enableWhatsApp={false}
           />
+
 
 
 
