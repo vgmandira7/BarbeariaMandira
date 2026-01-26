@@ -72,7 +72,7 @@ const NovoAgendamento = () => {
       setOpen(false);
 
     } catch (err) {
-      alert("Erro ao criar agendamento");
+      alert("Erros ao criar agendamento");
     }
   };
 
