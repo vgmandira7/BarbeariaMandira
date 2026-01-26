@@ -21,7 +21,7 @@ import TimeSlotSelection from "./TimeSlotSelection";
 
 // Usando VITE_API_BASE
 const apiBaseUrl =
-  import.meta.env.VITE_API_BASE ||
+  import.meta.env.VITE_API_URL ||
   "https://barbearia-mandira.vercel.app";
 
 
