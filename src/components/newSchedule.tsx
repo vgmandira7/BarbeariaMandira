@@ -22,7 +22,7 @@ import TimeSlotSelection from "./TimeSlotSelection";
 // Usando VITE_API_BASE
 const apiBaseUrl =
   import.meta.env.VITE_API_BASE ||
-  "https://barbearia-mandira.vercel.app";
+  "https://barbearia-mandira.vercel.app/api/bookings";
 
 
 const NovoAgendamento = () => {
