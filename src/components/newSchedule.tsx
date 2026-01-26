@@ -20,7 +20,10 @@ import { Plus } from "lucide-react";
 import TimeSlotSelection from "./TimeSlotSelection";
 
 // Usando VITE_API_BASE
-const apiBaseUrl = import.meta.env.VITE_API_BASE || 'http://localhost:8081';
+const apiBaseUrl =
+  import.meta.env.VITE_API_BASE ||
+  "https://barbearia-mandira.vercel.app";
+
 
 const NovoAgendamento = () => {
   const [open, setOpen] = useState(false);
