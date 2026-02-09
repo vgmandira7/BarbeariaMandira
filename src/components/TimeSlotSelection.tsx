@@ -136,36 +136,32 @@ const TimeSlotSelection = ({
 const redirectToWhatsApp = () => {
   const whatsappNumber = "5513997434050";
 
-  const message = `
-Olá! 👋 Meu agendamento foi confirmado ✅
+  const message =
+    `Olá! 👋 Meu agendamento foi confirmado ✅\n\n` +
+    `📌 *Detalhes do agendamento*\n` +
+    `👤 Cliente: ${userName}\n` +
+    `📞 Telefone: ${userPhone}\n` +
+    `✂️ Serviço: ${serviceNames[selectedService] || selectedService}\n` +
+    `📅 Data: ${format(selectedDate!, "dd/MM/yyyy")}\n` +
+    `⏰ Horário: ${selectedTime}\n` +
+    `⏳ Duração: ${duracao} minutos`;
 
-📌 *Detalhes do agendamento*
-👤 Cliente: ${userName}
-📞 Telefone: ${userPhone}
-✂️ Serviço: ${serviceNames[selectedService] || selectedService}
-📅 Data: ${format(selectedDate!, "dd/MM/yyyy")}
-⏰ Horário: ${selectedTime}
-⏳ Duração: ${duracao} minutos
+  const encodedMessage = encodeURIComponent(message);
 
-`;
+  const link = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodedMessage}`;
 
-  const link = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-    message
-  )}`;
-
-  window.open(link, "_blank");
+  window.location.href = link; // 👈 ESSENCIAL PARA iOS
 };
+
 
 const handleConfirmBooking = async () => {
   if (!selectedDate || !selectedTime) return;
 
-  // 🔹 FLUXO DO BARBEIRO (sem WhatsApp)
   if (enableWhatsApp === false) {
     onConfirm?.();
     return;
   }
 
-  // 🔹 FLUXO DO CLIENTE (com WhatsApp)
   const bookingData = {
     nome: userName,
     telefone: userPhone,
@@ -190,12 +186,15 @@ const handleConfirmBooking = async () => {
       return;
     }
 
+    // 🔥 primeiro feedback visual
     setShowConfirmation(true);
-    setLoading(false);
 
-    redirectToWhatsApp(); // 👈 só cliente
+    // 🔥 depois redireciona (Safari aceita)
+    redirectToWhatsApp();
+
   } catch (err) {
     alert("Erro ao salvar agendamento");
+  } finally {
     setLoading(false);
   }
 };
