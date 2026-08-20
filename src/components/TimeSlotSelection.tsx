@@ -33,7 +33,6 @@ interface TimeSlotSelectionProps {
   enableWhatsApp?: boolean;     // 👈 cliente vs barbeiro
 }
 
-
 const apiBaseUrl =
   import.meta.env.VITE_API_BASE ||
   "https://barbearia-mandira.vercel.app/api/bookings";
@@ -87,7 +86,6 @@ const TimeSlotSelection = ({
   manualDuration,
   enableWhatsApp = true,
 }: TimeSlotSelectionProps) => {
-
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
@@ -121,86 +119,82 @@ const TimeSlotSelection = ({
 
   const isSlotBlocked = (time: string, index: number) => {
     const booked = bookedTimes.includes(time);
-    const previous = timeSlots[index - 1]?.time;
-    const previousIsBooked = previous && bookedTimes.includes(previous);
+    const next = timeSlots[index + 1]?.time;
+    const nextIsBooked = next && bookedTimes.includes(next);
 
     if (slotsUsados === 2) {
-      if (booked) return true;
-      if (previousIsBooked) return true;
+      if (booked || !next || nextIsBooked) return true;
     }
 
     return booked;
   };
 
-// 🔥 REDIRECIONAMENTO PARA WHATSAPP
-const redirectToWhatsApp = () => {
-  const whatsappNumber = "5513997434050";
+  // 🔥 REDIRECIONAMENTO PARA WHATSAPP
+  const redirectToWhatsApp = () => {
+    const whatsappNumber = "5513997434050";
 
-  const message =
-    `Olá! 👋 Meu agendamento foi confirmado ✅\n\n` +
-    `📌 *Detalhes do agendamento*\n` +
-    `👤 Cliente: ${userName}\n` +
-    `📞 Telefone: ${userPhone}\n` +
-    `✂️ Serviço: ${serviceNames[selectedService] || selectedService}\n` +
-    `📅 Data: ${format(selectedDate!, "dd/MM/yyyy")}\n` +
-    `⏰ Horário: ${selectedTime}\n` +
-    `⏳ Duração: ${duracao} minutos`;
+    const message =
+      `Olá! 👋 Meu agendamento foi confirmado ✅\n\n` +
+      `📌 *Detalhes do agendamento*\n` +
+      `👤 Cliente: ${userName}\n` +
+      `📞 Telefone: ${userPhone}\n` +
+      `✂️ Serviço: ${serviceNames[selectedService] || selectedService}\n` +
+      `📅 Data: ${format(selectedDate!, "dd/MM/yyyy")}\n` +
+      `⏰ Horário: ${selectedTime}\n` +
+      `⏳ Duração: ${duracao} minutos`;
 
-  const encodedMessage = encodeURIComponent(message);
+    const encodedMessage = encodeURIComponent(message);
 
-  const link = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodedMessage}`;
+    const link = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodedMessage}`;
 
-  window.location.href = link; // 👈 ESSENCIAL PARA iOS
-};
-
-
-const handleConfirmBooking = async () => {
-  if (!selectedDate || !selectedTime) return;
-
-  if (enableWhatsApp === false) {
-    onConfirm?.();
-    return;
-  }
-
-  const bookingData = {
-    nome: userName,
-    telefone: userPhone,
-    servico: selectedService,
-    data: selectedDate.toISOString().split("T")[0],
-    horario: selectedTime,
-    duracao,
+    window.location.href = link; // 👈 ESSENCIAL PARA iOS
   };
 
-  try {
-    setLoading(true);
+  const handleConfirmBooking = async () => {
+    if (!selectedDate || !selectedTime) return;
 
-    const res = await fetch(apiBaseUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(bookingData),
-    });
-
-    if (!res.ok) {
-      alert("Erro ao salvar agendamento");
-      setLoading(false);
+    if (enableWhatsApp === false) {
+      onConfirm?.();
       return;
     }
 
-    // 🔥 primeiro feedback visual
-    setShowConfirmation(true);
+    const bookingData = {
+      nome: userName,
+      telefone: userPhone,
+      servico: selectedService,
+      data: selectedDate.toISOString().split("T")[0],
+      horario: selectedTime,
+      duracao,
+    };
 
-    // 🔥 depois redireciona (Safari aceita)
-    redirectToWhatsApp();
+    try {
+      setLoading(true);
 
-  } catch (err) {
-    alert("Erro ao salvar agendamento");
-  } finally {
-    setLoading(false);
-  }
-};
+      const res = await fetch(apiBaseUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bookingData),
+      });
 
+      const data = await res.json();
 
+      if (!res.ok) {
+        alert(data.error || "Erro ao salvar agendamento");
+        setLoading(false);
+        return;
+      }
 
+      // 🔥 primeiro feedback visual
+      setShowConfirmation(true);
+
+      // 🔥 depois redireciona (Safari aceita)
+      redirectToWhatsApp();
+    } catch (err) {
+      alert("Erro ao salvar agendamento");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (showConfirmation) {
     return (
