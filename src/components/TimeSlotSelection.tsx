@@ -133,13 +133,19 @@ const TimeSlotSelection = ({
   const redirectToWhatsApp = () => {
     const whatsappNumber = "5513997434050";
 
+    // Formata o dia da semana (ex: "quinta-feira" -> "Quinta")
+    const diaSemanaBruto = format(selectedDate!, "EEEE", { locale: ptBR });
+    const diaSemana = diaSemanaBruto.split("-")[0];
+    const diaSemanaFormatado = diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1);
+    const dataComDiaSemana = `${diaSemanaFormatado} - ${format(selectedDate!, "dd/MM/yyyy")}`;
+
     const message =
       `Olá! 👋 Meu agendamento foi confirmado ✅\n\n` +
       `📌 *Detalhes do agendamento*\n` +
       `👤 Cliente: ${userName}\n` +
       `📞 Telefone: ${userPhone}\n` +
       `✂️ Serviço: ${serviceNames[selectedService] || selectedService}\n` +
-      `📅 Data: ${format(selectedDate!, "dd/MM/yyyy")}\n` +
+      `📅 Data: ${dataComDiaSemana}\n` +
       `⏰ Horário: ${selectedTime}\n` +
       `⏳ Duração: ${duracao} minutos`;
 
