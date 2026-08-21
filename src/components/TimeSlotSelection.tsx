@@ -119,14 +119,22 @@ const TimeSlotSelection = ({
 
   const isSlotBlocked = (time: string, index: number) => {
     const booked = bookedTimes.includes(time);
-    const next = timeSlots[index + 1]?.time;
-    const nextIsBooked = next && bookedTimes.includes(next);
 
+    // 1. Bloqueia se o horário já está reservado
+    if (booked) return true;
+
+    // 2. Bloqueia se o horário anterior foi reservado (ocupa 2 slots)
+    const previous = timeSlots[index - 1]?.time;
+    if (previous && bookedTimes.includes(previous)) return true;
+
+    // 3. Se o agendamento atual for de 60 min (2 slots):
+    // Bloqueia se não houver próximo slot ou se o próximo slot já estiver reservado
     if (slotsUsados === 2) {
-      if (booked || !next || nextIsBooked) return true;
+      const next = timeSlots[index + 1]?.time;
+      if (!next || bookedTimes.includes(next)) return true;
     }
 
-    return booked;
+    return false;
   };
 
   // 🔥 REDIRECIONAMENTO PARA WHATSAPP
