@@ -99,7 +99,25 @@ const TimeSlotSelection = ({
       const formattedDate = format(date, "yyyy-MM-dd");
       const res = await fetch(`${apiBaseUrl}/data/${formattedDate}`);
       const dayBookings = await res.json();
-      setBookedTimes(dayBookings.map((b: any) => b.horario));
+
+      // Mapeia todos os slots ocupados considerando se o corte agendado foi de 30 ou 60 minutos
+      const occupied: string[] = [];
+      dayBookings.forEach((b: any) => {
+        occupied.push(b.horario);
+        const bookingDuration =
+          b.duracao !== undefined && b.duracao !== null
+            ? Number(b.duracao)
+            : serviceDurations[b.servico] ?? 60;
+
+        if (bookingDuration >= 60) {
+          const index = timeSlots.findIndex((slot) => slot.time === b.horario);
+          if (index !== -1 && timeSlots[index + 1]) {
+            occupied.push(timeSlots[index + 1].time);
+          }
+        }
+      });
+
+      setBookedTimes(occupied);
     } catch (err) {
       console.error("Erro ao buscar agendamentos", err);
     }
@@ -118,17 +136,11 @@ const TimeSlotSelection = ({
   const slotsUsados = duracao >= 60 ? 2 : 1;
 
   const isSlotBlocked = (time: string, index: number) => {
-    const booked = bookedTimes.includes(time);
+    // 1. O próprio slot já está ocupado por outro corte no banco
+    if (bookedTimes.includes(time)) return true;
 
-    // 1. Bloqueia se o horário já está reservado
-    if (booked) return true;
-
-    // 2. Bloqueia se o horário anterior foi reservado (ocupa 2 slots)
-    const previous = timeSlots[index - 1]?.time;
-    if (previous && bookedTimes.includes(previous)) return true;
-
-    // 3. Se o agendamento atual for de 60 min (2 slots):
-    // Bloqueia se não houver próximo slot ou se o próximo slot já estiver reservado
+    // 2. Se o corte selecionado agora for de 60 min (2 slots):
+    // Bloqueia caso não tenha próximo slot ou o próximo já esteja ocupado
     if (slotsUsados === 2) {
       const next = timeSlots[index + 1]?.time;
       if (!next || bookedTimes.includes(next)) return true;
